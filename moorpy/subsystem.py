@@ -352,7 +352,7 @@ class Subsystem(System, Line):
             if self.sys:  # If there is a parent system, query it's seabed info
                 z, _ = self.sys.getDepthFromBathymetry(r[0], r[1])
             else:
-                z = -self.depth  # Otherwise use the subsystem's depth parameter
+                z = self.depth  # Otherwise use the subsystem's depth parameter
             
             r = np.array([r[0], r[1], -z])  # (making a copy of r to not overwrite it)
         
