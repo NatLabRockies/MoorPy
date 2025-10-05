@@ -467,7 +467,7 @@ class Subsystem(System, Line):
             plt.show()    
     
     
-    def drawLine2d(self, Time, ax, color="k", endpoints=False, Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, colortension=False, plotnodes=[], plotnodesline=[],label="",cmap='rainbow', alpha=1.0, linewidth = 1):
+    def drawLine2d(self, Time, ax, color="k", endpoints=False, Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, colortension=False, depth_cmap_settings=None, plotnodes=[], plotnodesline=[],label="",cmap='rainbow', alpha=1.0, linewidth = 1):
         '''wrapper to System.plot2d with some transformation applied'''
         
         for i, line in enumerate(self.lineList):
@@ -497,8 +497,21 @@ class Subsystem(System, Line):
             Xs2d = Xs*Xuvec[0] + Ys*Xuvec[1] + Zs*Xuvec[2] + Xoff
             Ys2d = Xs*Yuvec[0] + Ys*Yuvec[1] + Zs*Yuvec[2] + Yoff
             
-            
-            if colortension:    # if the mooring lines want to be plotted with colors based on node tensions
+            if depth_cmap_settings is not None: 
+                import matplotlib.cm as cm
+                import matplotlib.colors as mcolors
+                cmap_obj = cm.get_cmap(depth_cmap_settings.get("cmap", "Blues"))
+                norm = mcolors.Normalize(
+                    vmin=depth_cmap_settings.get("vmin", 0),
+                    vmax=depth_cmap_settings.get("vmax", 1)
+                )                
+                for j in range(len(Xs2d)-1):
+                    avg_depth = (Zs[j] + Zs[j+1]) / 2
+                    rgba = cmap_obj(norm(avg_depth))
+                    ax.plot(Xs2d[j:j+2], Ys2d[j:j+2], color=rgba,
+                            lw=linewidth*6, alpha=alpha)  # multiplying linewidth by 3 to make depth lines more visible                
+                    
+            elif colortension:    # if the mooring lines want to be plotted with colors based on node tensions
                 maxT = np.max(tensions); minT = np.min(tensions)
                 for i in range(len(Xs)-1):          # for each node in the line
                     color_ratio = ((tensions[i] + tensions[i+1])/2 - minT)/(maxT - minT)  # ratio of the node tension in relation to the max and min tension
