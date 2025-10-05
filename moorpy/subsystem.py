@@ -774,6 +774,14 @@ class Subsystem(System, Line):
         
         return dynamicTe 
     
+    def getAng(self, iLine):
+        '''Compute the angle of the line.'''
+        line = self.lineList[iLine]
+        xs = line.Xs
+        zs = line.Zs
+        ang = np.degrees(np.arctan2(zs[-1]-zs[0], xs[-1]-xs[0]))
+        
+        return ang
     def getMinTen(self, iLine):
         '''Compute the end (maximum) tension for a specific line, including
         a dynamic amplification factor.'''
