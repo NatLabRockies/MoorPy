@@ -467,8 +467,45 @@ class Subsystem(System, Line):
             plt.show()    
     
     
-    def drawLine2d(self, Time, ax, color="k", endpoints=False, Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, colortension=False, plotnodes=[], plotnodesline=[],label="",cmap='rainbow', alpha=1.0, linewidth = 1):
-        '''wrapper to System.plot2d with some transformation applied'''
+    def drawLine2d(self, Time, ax, color="k", endpoints=False, Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, colortension=False, line_depth_settings=None, plotnodes=[], plotnodesline=[],label="",cmap='rainbow', alpha=1.0, linewidth = 1):
+        '''wrapper to System.plot2d with some transformation applied
+        
+        Parameters
+        ----------
+        Time : float
+            The current time for which the line is being drawn.
+        ax : matplotlib.axes.Axes
+            The axes on which to plot the line.
+        color : str, optional
+            The color of the line. Default is "k" (black).
+        endpoints : bool, optional
+            Whether to plot the endpoints of the line. Default is False.
+        Xuvec : list, optional
+            The x-direction vector for 3D to 2D transformation. Default is [1, 0, 0].
+        Yuvec : list, optional
+            The y-direction vector for 3D to 2D transformation. Default is [0, 0, 1].
+        Xoff : float, optional
+            Offset in the x-direction. Default is 0.
+        Yoff : float, optional
+            Offset in the y-direction. Default is 0.
+        colortension : bool, optional
+            Whether to color the line based on node tensions. Default is False.
+        line_depth_settings : dict, optional
+            Settings for depth colormap, including 'cmap', 'vmin', 'vmax', 'and only_shared'.
+            only_shared is a bool that indicates if depth coloring should only be applied to shared lines.
+        plotnodes : list, optional
+            List of nodes to plot on the line.
+        plotnodesline : list, optional
+            List of line numbers corresponding to the nodes to plot.
+        label : str or list, optional
+            Label(s) for the line in the plot legend.
+        cmap : str, optional
+            Colormap to use for tension coloring. Default is 'rainbow'.
+        alpha : float, optional
+            Transparency level of the line. Default is 1.0.
+        linewidth : float, optional
+            Width of the line. Default is 1.
+        '''
         
         for i, line in enumerate(self.lineList):
             if isinstance(label,list) and len(label)==len(self.lineList):
@@ -497,8 +534,28 @@ class Subsystem(System, Line):
             Xs2d = Xs*Xuvec[0] + Ys*Xuvec[1] + Zs*Xuvec[2] + Xoff
             Ys2d = Xs*Yuvec[0] + Ys*Yuvec[1] + Zs*Yuvec[2] + Yoff
             
-            
-            if colortension:    # if the mooring lines want to be plotted with colors based on node tensions
+            if line_depth_settings is not None: 
+                import matplotlib.cm as cm
+                import matplotlib.colors as mcolors
+                cmap_obj = cm.get_cmap(line_depth_settings.get("cmap", "Blues"))
+                norm = mcolors.Normalize(
+                    vmin=line_depth_settings.get("vmin", 0),
+                    vmax=line_depth_settings.get("vmax", 1)
+                )
+                only_shared = line_depth_settings.get("only_shared", False)           
+                for j in range(len(Xs2d)-1):
+                    avg_depth = (Zs[j] + Zs[j+1]) / 2
+                    rgba = cmap_obj(norm(avg_depth))  
+                    if only_shared:
+                        if abs(self.rA[-1]) < self.depth:
+                            ax.plot(Xs2d[j:j+2], Ys2d[j:j+2], color=rgba,
+                                    lw=linewidth*6, alpha=alpha, zorder=2 if abs(self.rA[-1]) < self.depth else 1)  # multiplying linewidth by 6 to make depth lines more visible | also, once we agree on an attribute name for the shared line, change the condition of `abs(self.rA[-1]) < self.depth` ->>> `self.shared`
+                    else:
+                        ax.plot(Xs2d[j:j+2], Ys2d[j:j+2], color=rgba,
+                            lw=linewidth*6, alpha=alpha, zorder=2 if abs(self.rA[-1]) < self.depth else 1)
+
+                    
+            elif colortension:    # if the mooring lines want to be plotted with colors based on node tensions
                 maxT = np.max(tensions); minT = np.min(tensions)
                 for i in range(len(Xs)-1):          # for each node in the line
                     color_ratio = ((tensions[i] + tensions[i+1])/2 - minT)/(maxT - minT)  # ratio of the node tension in relation to the max and min tension
