@@ -1422,7 +1422,7 @@ def lines2ss(ms):
 
     return ms
 
-def lengthAwareSegmentation(lineList):
+def lengthAwareSegmentation(lineList, factor=1):
     '''Function to segment a set of lines based on their lengths 
     to give appropriate segment lengths.
 
@@ -1438,6 +1438,9 @@ def lengthAwareSegmentation(lineList):
     '''
     for line in lineList:
         line.nNodes = int(np.ceil( np.sqrt(np.maximum(1, line.L-10))/2 ) + 1)
+        line.nNodes = int(line.nNodes * factor)
+        if line.nNodes == 1:
+            line.nNodes += 1  # minimum of 1 segment (two nodes)
 
 def lines2subsystem(lines,points, ms,span=None,case=0):
     '''Takes a set of connected lines (in order from rA to rB) in a moorpy system and creates a subsystem equivalent.
