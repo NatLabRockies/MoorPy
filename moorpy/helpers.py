@@ -1551,6 +1551,7 @@ def lines2subsystem(lines,points, ms,span=None,case=0):
     # append subsystem to ms
     ms.lineList.append(ss)
     ssNum = len(ms.lineList)
+    ss.sys = ms
     # attach subystem line to the end points
     ms.pointList[points[0]].attachLine(ssNum,0) # rA
     ms.pointList[points[-1]].attachLine(ssNum,1) # rB     

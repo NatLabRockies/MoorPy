@@ -170,7 +170,7 @@ class Subsystem(System, Line):
                         
                         depth, _ = self.sys.getDepthFromBathymetry(x, y) # depth
                         
-                        xs_loc.append( (x - self.rA[0])*LH/dx )  # hotizontal length along sybsystem
+                        xs_loc.append(-(LH - (x - self.rA[0])*LH/dx ))  # hotizontal length along sybsystem
                         depths.append(depth)
         
         
@@ -180,12 +180,23 @@ class Subsystem(System, Line):
                     # Check if x is between rA and rB:
                     if (self.rA[1] < y and y < self.rB[1]) or (self.rA[1] > y and y > self.rB[1]):
                         
-                        x = self.rA[1] + (y - self.rA[1])*dx/dy  # corresponding y value
+                        x = self.rA[0] + (y - self.rA[1])*dx/dy  # corresponding y value
                         
                         depth, _ = self.sys.getDepthFromBathymetry(x, y) # depth
                         
-                        xs_loc.append( (y - self.rA[1])*LH/dy )  # hotizontal length along sybsystem
+                        xs_loc.append(-(LH - (y - self.rA[1])*LH/dy ))  # hotizontal length along sybsystem
                         depths.append(depth)
+        
+            # if subsystem doesn't cross bathGrid points at all, just get the depths at rA and rB
+            if len(xs_loc)==0:
+                # get rA depth
+                depth, _ = self.sys.getDepthFromBathymetry(self.rA[0],self.rA[1])
+                xs_loc.append(-LH)
+                depths.append(depth)
+                # get rB depth
+                depth, _ = self.sys.getDepthFromBathymetry(self.rB[0],self.rB[1])
+                xs_loc.append(0)
+                depths.append(depth)
         
             # Sort xs_loc and depths by increasing xs_loc values
             xs_loc = np.array(xs_loc)
@@ -199,6 +210,7 @@ class Subsystem(System, Line):
             self.bathGrid_Xs = np.array(xs_loc_sorted)
             self.bathGrid_Ys = np.array([0])
             self.bathGrid    = np.array([depths_sorted])
+            self.seabedMod = 2 # update seabed mod since there is bathymetry!
             
         else:
             pass  # MH: can't think of anything to do for isolated subsystems at the moment...
@@ -619,7 +631,7 @@ class Subsystem(System, Line):
                     Zs = np.zeros(len(Xs))
                     for i in range(len(Xs)):
                         # Can get depths from the Subsystem's local grid
-                        Zs[i] = self.getDepthFromBathymetry(Xs0[i], Ys0[i])
+                        Zs[i], _ = self.getDepthFromBathymetry(Xs0[i], Ys0[i])
                         #Zs[i] = self.sys.getDepthFromBathymetry(Xs[i], Ys[i])
 
                 ax.plot(Xs, Ys, Zs, color=[0.5, 0.5, 0.5, 0.2], lw=line.lw, zorder = 1.5) # draw shadow

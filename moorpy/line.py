@@ -849,7 +849,7 @@ class Line():
             try:
                 (fAH, fAV, fBH, fBV, info) = catenary(LH, LV, self.L, self.EA, 
                      w_total, CB=cb, alpha=alpha, HF0=self.HF, VF0=self.VF, Tol=tol, 
-                     nNodes=self.nNodes, plots=profiles, depth=self.sys.depth)
+                     nNodes=self.nNodes, plots=profiles, depth=depthA)
             
             except CatenaryError as error:
                 raise LineError(self.number, error.message)       

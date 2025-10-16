@@ -121,6 +121,13 @@ class System():
         # read in data from an input file if a filename was provided
         if len(file) > 0:
             self.load(file)
+            # check if bathymetry, if so sink anchors as needed
+            if 'bathymetry' in kwargs:
+                for pt in self.pointList:
+                    # assume point is an anchor if it's fixed and at system depth
+                    if pt.type==1 and pt.r[2]==-self.depth:
+                        z, _ = self.getDepthFromBathymetry(pt.r[0], pt.r[1])
+                        pt.r[2] = -z
         
         # set the quasi-static/dynamic toggle for the entire mooring system
         self.qs = qs
