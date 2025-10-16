@@ -542,17 +542,18 @@ class Subsystem(System, Line):
                     vmin=line_depth_settings.get("vmin", 0),
                     vmax=line_depth_settings.get("vmax", 1)
                 )
-                only_shared = line_depth_settings.get("only_shared", False)           
+                only_shared = line_depth_settings.get("only_shared", False)          
+                linewidth_multiplier = line_depth_settings.get("linewidth_multiplier", 2)  # to make depth lines more visible 
                 for j in range(len(Xs2d)-1):
                     avg_depth = (Zs[j] + Zs[j+1]) / 2
                     rgba = cmap_obj(norm(avg_depth))  
                     if only_shared:
                         if abs(self.rA[-1]) < self.depth:
                             ax.plot(Xs2d[j:j+2], Ys2d[j:j+2], color=rgba,
-                                    lw=linewidth*6, alpha=alpha, zorder=2 if abs(self.rA[-1]) < self.depth else 1)  # multiplying linewidth by 6 to make depth lines more visible | also, once we agree on an attribute name for the shared line, change the condition of `abs(self.rA[-1]) < self.depth` ->>> `self.shared`
+                                    lw=linewidth*linewidth_multiplier, alpha=alpha, zorder=2 if abs(self.rA[-1]) < self.depth else 1)  # multiplying linewidth by 6 to make depth lines more visible | also, once we agree on an attribute name for the shared line, change the condition of `abs(self.rA[-1]) < self.depth` ->>> `self.shared`
                     else:
                         ax.plot(Xs2d[j:j+2], Ys2d[j:j+2], color=rgba,
-                            lw=linewidth*6, alpha=alpha, zorder=2 if abs(self.rA[-1]) < self.depth else 1)
+                            lw=linewidth*linewidth_multiplier, alpha=alpha, zorder=2 if abs(self.rA[-1]) < self.depth else 1)
 
                     
             elif colortension:    # if the mooring lines want to be plotted with colors based on node tensions
