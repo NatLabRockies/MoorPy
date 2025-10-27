@@ -735,7 +735,7 @@ class Line():
 
         # deal with horizontal tension starting point
         if self.HF < 0:
-            raise LineError("Line HF cannot be negative") # this could be a ValueError too...
+            self.HF = 0 # raise LineError("Line HF cannot be negative") # this could be a ValueError too...
             
         if reset==True:   # Indicates not to use previous fairlead force values to start catenary 
             self.HF = 0   # iteration with, and insteady use the default values.

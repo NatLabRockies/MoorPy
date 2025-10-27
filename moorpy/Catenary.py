@@ -344,15 +344,15 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
         else:  # U shaped
             ProfileType = 5   
             
-            # >>> this case should be extended to support sloped seabeds <<<
-            if not alpha == 0: raise CatenaryError("Skack U profile along seabed but seabed is sloped - not yet supported")
-    
+            # This case originally was for flat seabeds but now also gives a 
+            # (no-sliding) approximation for sloped seabeds.
+            # Note: to fully handly the slack sloped seabed case, including horizontal forces, 
+            # a solve with three different sections could be needed (2 catenary, one seabed).
+            
             HF = 0.0
             VF = W*LHanging2
             HA = 0.0
             VA = -W*LHanging1
-            
-            dVF_dZF = W / np.sqrt(2.0*ZF/EA_W + 1.0)  # vertical stiffness
             
             info["HF"] = HF     # solution to be used to start next call (these are the solved variables, may be for anchor if line is reversed)
             info["VF"] = VF
@@ -737,7 +737,8 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
             info["Xextreme"] = 0.0    
         
         
-        # handle special case of a U-shaped line that has seabed contact (using 2 new catenary solves)
+        # Calculate distributed outputs (and correct the catenary solve) for special U-shaped case
+        # Correct the case of a U-shaped line that has seabed contact (using 2 new catenary solves)
         if info['ProfileType']==1 and info["Zextreme"] < -hA:
         
             # we will solve this as two separate lines to form the U shape
@@ -901,7 +902,7 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
                 plt.plot(Xs, Zs)
                 plt.show()
 
-        # the normal case
+        # Calculate distributed outputs for normal case
         else:
 
             # do plotting-related calculations if needed (plots=1: show plots; plots=2: just return values)
@@ -1566,8 +1567,9 @@ if __name__ == "__main__":
     #(fAH1, fAV1, fBH1, fBV1, info1) = catenary(997.547, 186.0, 1016.97134, 799738627.1597824, 1594.059185077651, CB=0.0, alpha=0.0, HF0=314561.120450163, VF0=523671.07753570913, Tol=2e-05, MaxIter=100, depth=200, nNodes=100, plots=1)
     #(fAH1, fAV1, fBH1, fBV1, info1) = catenary(997.5168, 186.0, 1016.97134, 801228558.5672204, 1597.0290198975624, CB=0.0, alpha=0.0, HF0=315147.1684089979, VF0=524646.7105467543, Tol=2e-05, MaxIter=100, depth=200, nNodes=100, plots=1)
     
+    #(fAH1, fAV1, fBH1, fBV1, info1) = catenary(36.8677299586167, -20.0, 41.943170938142885, 720564398.5432665, 4.790651494763263, CB=-20.0, alpha=0, HF0=0, VF0=0, Tol=0.00025, MaxIter=100, depth=0, plots=1)
     
-    (fAH1, fAV1, fBH1, fBV1, info1) = catenary(36.8677299586167, -20.0, 41.943170938142885, 720564398.5432665, 4.790651494763263, CB=-20.0, alpha=0, HF0=0, VF0=0, Tol=0.00025, MaxIter=100, depth=0, plots=1)
+    (fAH1, fAV1, fBH1, fBV1, info1) = catenary(99.81049247033445, -0.05676018885873191, 497.7, 2053446578.5601218, 4093.0908951352612, CB=0, alpha=-0.032582936271583374, HF0=0.0, VF0=703890.9922736725, Tol=0.0001, MaxIter=100, depth=169.68538734009778, plots=1)
     
     
     # First attempt's iterations are as follows:
