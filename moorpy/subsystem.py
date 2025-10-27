@@ -160,6 +160,11 @@ class Subsystem(System, Line):
             xs_loc = []  # local x value along subsystem from end A
             depths = []
             
+            # get rA depth
+            depth, _ = self.sys.getDepthFromBathymetry(self.rA[0],self.rA[1])
+            xs_loc.append(-LH)
+            depths.append(depth)
+            
             # Find all places where the subsystem crosses the bathGrid_Xs
             if abs(dx) > 0:
                 for x in self.sys.bathGrid_Xs:  # look along each grid line
@@ -187,16 +192,11 @@ class Subsystem(System, Line):
                         xs_loc.append(-(LH - (y - self.rA[1])*LH/dy ))  # hotizontal length along sybsystem
                         depths.append(depth)
         
-            # if subsystem doesn't cross bathGrid points at all, just get the depths at rA and rB
-            if len(xs_loc)==0:
-                # get rA depth
-                depth, _ = self.sys.getDepthFromBathymetry(self.rA[0],self.rA[1])
-                xs_loc.append(-LH)
-                depths.append(depth)
-                # get rB depth
-                depth, _ = self.sys.getDepthFromBathymetry(self.rB[0],self.rB[1])
-                xs_loc.append(0)
-                depths.append(depth)
+                
+            # get rB depth
+            depth, _ = self.sys.getDepthFromBathymetry(self.rB[0],self.rB[1])
+            xs_loc.append(0)
+            depths.append(depth)
         
             # Sort xs_loc and depths by increasing xs_loc values
             xs_loc = np.array(xs_loc)
@@ -367,7 +367,7 @@ class Subsystem(System, Line):
                 z = self.depth  # Otherwise use the subsystem's depth parameter
             
             r = np.array([r[0], r[1], -z])  # (making a copy of r to not overwrite it)
-        
+
         # set end coordinates in global frame just like for a Line
         if endB == 1:
             self.rB = np.array(r, dtype=float)
