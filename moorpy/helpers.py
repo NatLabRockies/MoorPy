@@ -1984,20 +1984,35 @@ def duplicateSyntheticLines(ms):
                 if line.type['name'] == t:
                     inds.append(i)
             
-            names = [t]
+            names = []
             
-            # make copies of lineType (so that each segment with nonzero EAd has unique LineType)
-            for i in inds[1:]:
+            # iterate through list of indexes
+            for count, i in enumerate(inds):
                 
-                # insert the copies right below the existing linetype to make ordering more logical
+                #name for new linetypes
+                name = t +'_line'+ str(i+1)
                 
-                pos = list(ms.lineTypes.keys()).index(t) + 1
-                items = list(ms.lineTypes.items())     
-                items.insert(pos, (t+str(i), copy.deepcopy(ms.lineTypes[t])))
-                ms.lineTypes = dict(items)
-                ms.lineTypes[t + str(i)]['name'] = t + str(i)
+                #if first instance only update the name
+                if count == 0:
+                    ms.lineTypes[t]['name'] = name
+                    ms.lineTypes[name] = ms.lineTypes.pop(t)
                 
-                names.append(t + str(i))
+                #otherwise make a copy
+                else:
+                    # insert the copies right the previously added linetype to make ordering more logical
+                    pos = list(ms.lineTypes.keys()).index(names[0]) + 1 + count
+                    
+                    #save lineType list and insert copy
+                    items = list(ms.lineTypes.items())     
+                    items.insert(pos, (name, copy.deepcopy(ms.lineTypes[names[0]])))
+                    
+                    #update stored ms linetypes and name correctly
+                    ms.lineTypes = dict(items)
+                    ms.lineTypes[t +'_line'+ str(i+1)]['name'] = name
+                    
+                #keep track of name list and number of added linetypes 
+                names.append(name)
+                
             
             #make sure each line points to the correct lineType
             for j, i in enumerate(inds):

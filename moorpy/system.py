@@ -1062,7 +1062,7 @@ class System():
 
 
     def unload(self, fileName, MDversion=2, line_dL=0, rod_dL=0, flag='p', 
-               outputList=[], Lm=[0], T_half=42, phi=None, MDoptionsDict={}):
+               outputList=[], Lm=[0], T_half=42, phi=None, dynamicStiffness = False, MDoptionsDict={}):
         '''Unloads a MoorPy system into a MoorDyn-style input file
 
         Parameters
@@ -1084,6 +1084,8 @@ class System():
             half way between the static and dynamic values [s]. Default is 42.
         phi : list of floats, optional 
             platform's rotations variables [deg]. Defaults to None and platforms are not unrotated.
+        dynamicStiffness: float
+            if true, automatically activateDynamicStiffness to calculate dynamic EA
         MDoptionsDict: dictionary, optional
             MoorDyn Options. If not given, default options are considered.
         Returns
@@ -1341,24 +1343,46 @@ class System():
             L.append("TypeName      Diam     Mass/m     EA     BA/-zeta     EI        Cd      Ca      CdAx    CaAx")
             L.append("(name)        (m)      (kg/m)     (N)    (N-s/-)    (N-m^2)     (-)     (-)     (-)     (-)")
             
-            j = 0 # count for list of Lms
+            j = 0 # count for list of Lms 
             for key, lineType in self.lineTypes.items(): 
                 di = lineTypeDefaults.copy()  # start with a new dictionary of just the defaults
                 di.update(lineType)           # then copy in the lineType's existing values
+                
+
+                # check whether to compute dynamic stiffness for this linetype
                 if 'EAd' in di.keys() and di['EAd'] > 0:
-                    if Lm[0] > 0:
-                        print('Calculating dynamic stiffness with Lm = ' + str(Lm)+'* MBL')
+                    
+                    
+                    # either use provided mean loads OR use line EA if dynamicStiffness is True
+                    if Lm[0] > 0 or dynamicStiffness ==True:
+                        
                         
                         #assume list of Lms (length must equal number of lines with EAd)
                         if len(Lm) > 1:
+                            print('Calculating dynamic stiffness with Lm = ' + str(Lm[j])+'* MBL')
+                            
                             # Get dynamic stiffness including mean load dependence
                             EAd = di['EAd'] + di['EAd_Lm']*Lm[j]*di['MBL']
-                            j = j + 1
+                            j += 1
                         
                         #otherwise assume same Lm for all 
-                        else:
+                        elif Lm[0] > 0:
+                            print('Calculating dynamic stiffness with Lm = ' + str(Lm)+'* MBL')
                             # Get dynamic stiffness including mean load dependence
                             EAd = di['EAd'] + di['EAd_Lm']*Lm[0]*di['MBL']
+                        
+                        #use line EA if different from linetype EA (must have already called activateDynamicStiffness)
+                        else:
+                            self.activateDynamicStiffness()
+                            
+                            # for dynamic stiffness, determine which line has this linetype
+                            # use first instance (assumes that synethetic lines have already been duplicated!)
+                            for i, line in enumerate(self.lineList):
+                                if line.type['name'] == key:
+                                    break
+                                
+                            print('Calculating dynamic stiffness with line EA ', self.lineList[i].EA)
+                            EAd = self.lineList[i].EA
                         # This damping value is chosen for critical damping of a 10 m segment
                         c2 = 10 * np.sqrt(di['EA'] * di['m'])
                         # or use c1 = di['BA'] ?
@@ -1372,9 +1396,10 @@ class System():
 
                         c1 = (K1+K2)/(2*np.pi/T_half) * np.sqrt(((K1+frac*K2)**2 - K1**2)/((K1+K2)**2 - (K1+frac*K2)**2))
                         
-                        
                         L.append("{:<12} {:7.4f} {:8.2f}  {:7.3e}|{:7.3e} {:7.3e}|{:7.3e} {:7.3e}   {:<7.3f} {:<7.3f} {:<7.2f} {:<7.2f}".format(
                              key, di['d_vol'], di['m'], di['EA'], EAd, c1, c2, di['EI'], di['Cd'], di['Ca'], di['CdAx'], di['CaAx']))
+                    
+                        
                     else:
                         print('No mean load provided!!! using the static EA value ONLY')
                         L.append("{:<12} {:7.4f} {:8.2f}  {:7.3e} {:7.3e} {:7.3e}   {:<7.3f} {:<7.3f} {:<7.2f} {:<7.2f}".format(
@@ -1383,7 +1408,10 @@ class System():
                     L.append("{:<12} {:7.4f} {:8.2f}  {:7.3e} {:7.3e} {:7.3e}   {:<7.3f} {:<7.3f} {:<7.2f} {:<7.2f}".format(
                              key, di['d_vol'], di['m'], di['EA'], di['BA'], di['EI'], di['Cd'], di['Ca'], di['CdAx'], di['CaAx']))
             
-            
+            # revert to original line lengths if needed
+            if dynamicStiffness:
+                self.revertToStaticStiffness()
+                
             L.append("--------------------- ROD TYPES -----------------------------------------------------")
             L.append("TypeName      Diam     Mass/m    Cd     Ca      CdEnd    CaEnd")
             L.append("(name)        (m)      (kg/m)    (-)    (-)     (-)      (-)")
