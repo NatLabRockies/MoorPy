@@ -486,7 +486,7 @@ class Line():
                     rgba = cmap_obj(color_ratio)    # return the rbga values of the colormap of where the node tension is
                     linebit.append(ax.plot(Xs2d[i:i+2], Ys2d[i:i+2], color=rgba))
             else:
-                linebit.append(ax.plot(Xs2d, Ys2d, lw=linewidth, color=color, label=label, alpha=alpha)) # previously had lw=1 (linewidth)
+                linebit.append(ax.plot(Xs2d, Ys2d, lw=linewidth, color=colorplot, label=label, alpha=alpha)) # previously had lw=1 (linewidth)
             
             if len(plotnodes) > 0:
                 for i,node in enumerate(plotnodes):
@@ -850,7 +850,6 @@ class Line():
                 (fAH, fAV, fBH, fBV, info) = catenary(LH, LV, self.L, self.EA, 
                      w_total, CB=cb, alpha=alpha, HF0=self.HF, VF0=self.VF, Tol=tol, 
                      nNodes=self.nNodes, plots=profiles, depth=depthA)
-            
             except CatenaryError as error:
                 raise LineError(self.number, error.message)       
         #If EA isnt found then we will use the ten-str relationship defined in the input file 

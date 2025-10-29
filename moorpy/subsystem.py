@@ -149,7 +149,6 @@ class Subsystem(System, Line):
         node points corresponding to wherever the subsystem cross over an edge
         of the bathymetry grid.
         '''
-        
         dx = self.rB[0] - self.rA[0]
         dy = self.rB[1] - self.rA[1]
         
@@ -162,7 +161,7 @@ class Subsystem(System, Line):
             
             # get rA depth
             depth, _ = self.sys.getDepthFromBathymetry(self.rA[0],self.rA[1])
-            xs_loc.append(-LH)
+            xs_loc.append(-self.span)
             depths.append(depth)
             
             # Find all places where the subsystem crosses the bathGrid_Xs
@@ -175,7 +174,7 @@ class Subsystem(System, Line):
                         
                         depth, _ = self.sys.getDepthFromBathymetry(x, y) # depth
                         
-                        xs_loc.append(-(LH - (x - self.rA[0])*LH/dx ))  # hotizontal length along sybsystem
+                        xs_loc.append(-(self.span - (x - self.rA[0])*self.span/dx ))  # hotizontal length along sybsystem
                         depths.append(depth)
         
         
@@ -189,7 +188,7 @@ class Subsystem(System, Line):
                         
                         depth, _ = self.sys.getDepthFromBathymetry(x, y) # depth
                         
-                        xs_loc.append(-(LH - (y - self.rA[1])*LH/dy ))  # hotizontal length along sybsystem
+                        xs_loc.append(-(self.span - (y - self.rA[1])*self.span/dy ))  # hotizontal length along sybsystem
                         depths.append(depth)
         
                 
@@ -200,7 +199,7 @@ class Subsystem(System, Line):
         
             # Sort xs_loc and depths by increasing xs_loc values
             xs_loc = np.array(xs_loc)
-            depths = np.array(depths)
+            depths = np.array(depths, dtype=np.float64)
             idx = np.argsort(xs_loc)
             xs_loc_sorted = xs_loc[idx]
             depths_sorted = depths[idx]

@@ -1264,7 +1264,6 @@ def eval_func_cat(X, args):
         elif HF*1000000000 < VF:
             info['error'] = True
             info['message'] = "ProfileType 7: HF << VF, line is slack, not supported yet"
-            breakpoint()
         
         else:
             
