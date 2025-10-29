@@ -156,9 +156,11 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
         # double-back on itself; the line forms an "L" between the anchor and fairlead. Then it 
         # models it as bunched up on the seabed (instead of throwing an error)
     # ProfileType=5: Similar to above but both ends are off seabed, so it's U shaped and fully slack
+    #    (seabed can be sloped)
     # ProfileType=6: Completely vertical line without seabed contact (on the seabed is handled by 4 and 5)
     # ProfileType = 7: Portion of the line is resting on the seabed, and the seabed has a slope
     # ProfileType = 8: line resting on the seabed, and the seabed has a slope
+    # ProfileType = U: Both ends off the seabed, seabed contact, not slack (adding support for slope...)
     
     EA_W = EA/W
     
@@ -174,6 +176,11 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
     LHanging1 = np.sqrt(2.0*hA*EA_W + EA_W*EA_W) - EA_W  # unstretched hanging length at end A
     LHanging2 = np.sqrt(2.0*hB*EA_W + EA_W*EA_W) - EA_W  # unstretched hanging length at end B
     LHanging = LHanging1 + LHanging2  
+
+    # Some shortcuts for dealing with slope
+    cos_alpha = np.cos(np.radians(alpha))
+    sin_alpha = np.sin(np.radians(alpha))
+    tan_alpha = sin_alpha/cos_alpha
     
     # calculate a vertical stiffness estimate for an end lifting off the seabed
     def dV_dZ_s(z0, H):   # height off seabed to evaluate at (infinite if 0), horizontal tension
@@ -248,10 +255,6 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
     
             ProfileType = 8
             
-            cos_alpha = np.cos(np.radians(alpha))
-            tan_alpha = np.tan(np.radians(alpha))
-            sin_alpha = np.sin(np.radians(alpha))
-            
             LAB = XF/cos_alpha  # calling this the lenght along the seabed for this case
             if LAB < 0:
                 breakpoint()
@@ -323,10 +326,6 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
     
     
             if plots > 0:
-        
-                cos_alpha = np.cos(np.radians(alpha))
-                tan_alpha = np.tan(np.radians(alpha))
-        
                 for I in range(nNodes):
                     if s[I] > L-LHanging:   # this node is on the suspended/hanging portion of the line
                     
@@ -341,7 +340,7 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
                         Te[I] = 0.0
                         
                         
-        else:  # U shaped
+        else:  # U shaped (and slack)
             ProfileType = 5   
             
             # This case originally was for flat seabeds but now also gives a 
@@ -374,7 +373,7 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
                     
                     elif s[I] <= L-LHanging2:       # the middle portion of the line, slack along the seabed
                         Xs[I] = (s[I]-LHanging1)*XF/(L-LHanging1-LHanging2)
-                        Zs[I] = -hA
+                        Zs[I] = -hA + Xs[I]*tan_alpha
                         Te[I] = 0.0                        
                         
                     else:                           # the 2nd suspended/hanging portion of the line
@@ -981,10 +980,6 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
                     # Line is paritally in contact with a sloped seabed
                     elif ProfileType==7: 
                         
-                        cos_alpha = np.cos(np.radians(alpha))
-                        sin_alpha = np.sin(np.radians(alpha))
-                        tan_alpha = sin_alpha/cos_alpha
-                        
                         LBot = L - (VF - HF * tan_alpha)/W  # Length of line on the seafloor
                         
                         VTD = VF - W*(L-LBot)  #Vertical Force at the touchdownpoint (last point in contact with (sloped) seabed
@@ -1002,6 +997,7 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
                             xB = 0.0
 
                         xBlim = max(xB, 0.0) 
+                        
                           
                         if  s[I] <= xB and CB > 0:  # (aka Lbot - s > HF/(CB*W) ) if this node rests on the seabed and the tension is zero
                         
@@ -1568,9 +1564,38 @@ if __name__ == "__main__":
     
     #(fAH1, fAV1, fBH1, fBV1, info1) = catenary(36.8677299586167, -20.0, 41.943170938142885, 720564398.5432665, 4.790651494763263, CB=-20.0, alpha=0, HF0=0, VF0=0, Tol=0.00025, MaxIter=100, depth=0, plots=1)
     
-    (fAH1, fAV1, fBH1, fBV1, info1) = catenary(99.81049247033445, -0.05676018885873191, 497.7, 2053446578.5601218, 4093.0908951352612, CB=0, alpha=-0.032582936271583374, HF0=0.0, VF0=703890.9922736725, Tol=0.0001, MaxIter=100, depth=169.68538734009778, plots=1)
+    #(fAH1, fAV1, fBH1, fBV1, info1) = catenary(99.81049247033445, -0.05676018885873191, 497.7, 2053446578.5601218, 4093.0908951352612, CB=0, alpha=-0.032582936271583374, HF0=0.0, VF0=703890.9922736725, Tol=0.0001, MaxIter=100, depth=169.68538734009778, plots=1)
+    #(fAH1, fAV1, fBH1, fBV1, info1) = catenary(99.81049247033445, -0.6328306628997211, 497.7, 2053446578.5601218, 4093.0908951352612, CB=-0.17674800624504883, alpha=-0.26181044510614215, HF0=0.0, VF0=703890.9922736725, Tol=0.0001, MaxIter=100, depth=169.95903300525373, plots=1)
     
+    (fAH1, fAV1, fBH1, fBV1, info1) = catenary(475.4204524881751, 75.46949876239697, 497.7, 2053741190.7845445, 4093.6781602294, alpha=0, HF0=2105731.5430434863, VF0=1376367.9718298465, Tol=5e-06, MaxIter=100, plots=1)
     
+    '''
+    # slope issue investigation
+    (fAH1, fAV1, fBH1, fBV1, info1) = catenary(174, 159, 260, 121062548, 48, CB=0.0, alpha=0.0,   depth=300, Tol=0.000001, plots=1)
+    (fAH2, fAV2, fBH2, fBV2, info2) = catenary(174, 159, 260, 121062548, 48, CB=0.0, alpha=0.00001, depth=300, Tol=0.000001, plots=1)
+    
+    from moorpy.helpers import printMat
+    
+    def compare(label):
+        print(label)
+        print(f'{info1[label]:10.3f}')
+        print(f'{info2[label]:10.3f}')
+        print('-------------------------------')
+    
+    def compareMats(label):
+        print(label)
+        printMat(info1[label])
+        printMat(info2[label])
+        print('-------------------------------')
+    
+    compare('HA')
+    compare('HF')
+    compare('VA')
+    compare('VF')
+    compareMats('stiffnessA')
+    compareMats('stiffnessB')
+    compareMats('stiffnessBA')
+    '''
     # First attempt's iterations are as follows:
     # Iteration 0: HF= 5.0000e-05, VF= 2.8450e+04, EX= 0.00e+00, EZ= 0.00e+00
     # Second attempt's iterations are as follows:
