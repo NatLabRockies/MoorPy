@@ -1334,7 +1334,6 @@ def lines2ss(ms):
         multi-segmented mooring lines with subsystems.
 
     '''
-    
     i = 0 
     while True:
         subsys_line_id = []
@@ -1342,7 +1341,7 @@ def lines2ss(ms):
         line_ID_of_interest = []
         point_ID_of_interest = []
         pointi = ms.pointList[i]
-        if len(pointi.attached) > 2:
+        if len(pointi.attached) > 2 and pointi.number not in ms.groundBody.attachedP:
             raise ValueError("f point number {pointi.number} branches out.")
         # 1) define the connected lines if any
         subsys_line_id.append(pointi.attached[0])
@@ -1353,13 +1352,14 @@ def lines2ss(ms):
             for line_id in subsys_line_id:
                 for pointj in ms.pointList:
                     if line_id in pointj.attached:
-                        line_ID_of_interest.append(pointj.attached)
+                        if pointj.number not in ms.groundBody.attachedP:  # Do not consider anchors
+                            line_ID_of_interest.append(pointj.attached)
                         point_ID_of_interest.append(pointj.number)
-                        # if len(pointj.attached) > 2:  # this is the case where we end the subsystem chain if the subsystem line is branching
-                            # continue
+                            # if len(pointj.attached) > 2:  # this is the case where we end the subsystem chain if the subsystem line is branching
+                                # continue
             old_subsys_line = subsys_line_id
             old_subsys_point = subsys_point_id
-            # 3) get the unique values
+                # 3) get the unique values
             subsys_line_id = np.unique(np.concatenate(line_ID_of_interest))
             subsys_point_id = np.unique(point_ID_of_interest)
             if len(subsys_line_id) == len(old_subsys_line) and len(subsys_point_id) == len(old_subsys_point):
@@ -1416,31 +1416,11 @@ def lines2ss(ms):
         ms = lines2subsystem(lines, points, ms, span=None, case=case)
         ms.initialize()
         ms.solveEquilibrium()
-        i += 1
+        i += 1      
         if i >= len(ms.pointList):
             break
 
     return ms
-
-def lengthAwareSegmentation(lineList, factor=1):
-    '''Function to segment a set of lines based on their lengths 
-    to give appropriate segment lengths.
-
-    Parameters
-    ----------
-    lineList : list
-        List of line objects to segment
-
-    Returns
-    -------
-    None
-
-    '''
-    for line in lineList:
-        line.nNodes = int(np.ceil( np.sqrt(np.maximum(1, line.L-10))/2 ) + 1)
-        line.nNodes = int(line.nNodes * factor)
-        if line.nNodes == 1:
-            line.nNodes += 1  # minimum of 1 segment (two nodes)
 
 def lines2subsystem(lines,points, ms,span=None,case=0):
     '''Takes a set of connected lines (in order from rA to rB) in a moorpy system and creates a subsystem equivalent.
@@ -1558,6 +1538,26 @@ def lines2subsystem(lines,points, ms,span=None,case=0):
         
     return(ms)
 
+def lengthAwareSegmentation(lineList, factor=1):
+    '''Function to segment a set of lines based on their lengths 
+    to give appropriate segment lengths.
+
+    Parameters
+    ----------
+    lineList : list
+        List of line objects to segment
+
+    Returns
+    -------
+    None
+
+    '''
+    for line in lineList:
+        line.nNodes = int(np.ceil( np.sqrt(np.maximum(1, line.L-10))/2 ) + 1)
+        line.nNodes = int(line.nNodes * factor)
+        if line.nNodes == 1:
+            line.nNodes += 1  # minimum of 1 segment (two nodes)
+            
 def deleteLine(ms,ln,delpts=0):
     '''
     Deletes a line from the linelist, and updates the points to have the correct line
@@ -1640,6 +1640,10 @@ def deleteLine(ms,ln,delpts=0):
                         # reduce point.number for each point after deleted point
                         for k in range(0,len(ms.pointList)):
                             if ms.pointList[k].number > i + 1:
+                                if ms.pointList[k].number in ms.groundBody.attachedP:
+                                    idx = ms.groundBody.attachedP.index(ms.pointList[k].number)  # reduce the number in the groundBody attached points
+                                    ms.groundBody.attachedP[idx] -= 1
+
                                 ms.pointList[k].number = ms.pointList[k].number - 1
                         # lower index of any body attached points after deleted point, remove deleted point from body attached points
                         for k in range(0,len(ms.bodyList)):
