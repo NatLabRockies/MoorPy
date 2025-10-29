@@ -3578,17 +3578,17 @@ class System():
             Plot on an existing set of axes
         color : string, optional
             Some way to control the color of the plot ... TBD <<<
-        hidebox : bool, optional
-            If true, hides the axes and box so just the plotted lines are visible.
+        plot_box : bool, optional
+            If false, hides the axes and box so just the plotted lines are visible.
         rbound : float, optional
             A bound to be placed on each axis of the plot. If 0, the bounds will be the max values on each axis. The default is 0.
         title : string, optional
             A title of the plot. The default is "".
-        linelabels : bool, optional
+        plot_linelabels : bool, optional
             Adds line numbers to plot in text. Default is False.
-        pointlabels: bool, optional
+        plot_pointlabels: bool, optional
             Adds point numbers to plot in text. Default is False.
-        endpoints: bool, optional
+        plot_endpoints: bool, optional
             Adds visible end points to lines. Default is False.
             
         Returns
@@ -3603,28 +3603,28 @@ class System():
         # kwargs that can be used for plot or plot2d
         title           = kwargs.get('title'          , ""        )     # optional title for the plot
         time            = kwargs.get("time"           , 0         )     # the time in seconds of when you want to plot
-        linelabels      = kwargs.get('linelabels'     , False     )     # toggle to include line number labels in the plot
-        pointlabels     = kwargs.get('pointlabels'    , False     )     # toggle to include point number labels in the plot
-        draw_body       = kwargs.get("draw_body"      , True      )     # toggle to draw the Bodies or not
-        draw_clumps     = kwargs.get('draw_clumps'    , False     )     # toggle to draw clump weights and float of the mooring system
-        draw_anchors    = kwargs.get('draw_anchors'   , False     )     # toggle to draw the anchors of the mooring system or not  
-        draw_seabed     = kwargs.get('draw_seabed'    , True      )     # toggle to draw the seabed bathymetry or not
+        plot_linelabels      = kwargs.get('plot_linelabels'     , False     )     # toggle to include line number labels in the plot
+        plot_pointlabels     = kwargs.get('plot_pointlabels'    , False     )     # toggle to include point number labels in the plot
+        plot_body       = kwargs.get("plot_body"      , True      )     # toggle to draw the Bodies or not
+        plot_clumps     = kwargs.get('plot_clumps'    , False     )     # toggle to draw clump weights and float of the mooring system
+        plot_anchors    = kwargs.get('plot_anchors'   , False     )     # toggle to draw the anchors of the mooring system or not  
+        plot_seabed     = kwargs.get('plot_seabed'    , True      )     # toggle to draw the seabed bathymetry or not
         args_bath       = kwargs.get("args_bath"      , {}        )     # dictionary of optional plot_surface arguments
         '''
         cmap_bath       = kwargs.get("cmap"           , 'ocean'   )     # matplotlib colormap specification
         alpha           = kwargs.get("opacity"        , 1.0       )     # the transparency of the bathymetry plot_surface
         '''
         rang            = kwargs.get('rang'           , 'hold'    )     # colorbar range: if range not used, set it as a placeholder, it will get adjusted later
-        cbar_bath       = kwargs.get('cbar_bath'      , False     )     # toggle to include a colorbar for a plot or not
+        plot_cbar_bath       = kwargs.get('plot_cbar_bath'      , False     )     # toggle to include a colorbar for a plot or not
         colortension    = kwargs.get("colortension"   , False     )     # toggle to draw the mooring lines in colors based on node tensions
         cmap_tension    = kwargs.get('cmap_tension'   , 'rainbow' )     # the type of color spectrum desired for colortensions
-        cbar_tension    = kwargs.get('cbar_tension'   , False     )     # toggle to include a colorbar of the tensions when colortension=True
+        plot_cbar_tension    = kwargs.get('plot_cbar_tension'   , False     )     # toggle to include a colorbar of the tensions when colortension=True
         figsize         = kwargs.get('figsize'        , (6,4)     )     # the dimensions of the figure to be plotted
         # kwargs that are currently only used in plot
-        hidebox         = kwargs.get('hidebox'        , False     )     # toggles whether to show the axes or not
-        endpoints       = kwargs.get('endpoints'      , False     )     # toggle to include the line end points in the plot
-        waterplane      = kwargs.get("waterplane"     , False     )     # option to plot water surface
-        shadow          = kwargs.get("shadow"         , True      )     # toggle to draw the mooring line shadows or not
+        plot_box         = kwargs.get('plot_box'        , True     )     # toggles whether to show the axes or not
+        plot_endpoints       = kwargs.get('plot_endpoints'      , False     )     # toggle to include the line end points in the plot
+        plot_waterplane      = kwargs.get("plot_waterplane"     , False     )     # option to plot water surface
+        plot_shadow          = kwargs.get("plot_shadow"         , True      )     # toggle to draw the mooring line shadows or not
         cbar_bath_size  = kwargs.get('colorbar_size'  , 1.0       )     # the scale of the colorbar. Not the same as aspect. Aspect adjusts proportions
         # bound kwargs
         xbounds         = kwargs.get('xbounds'        , None      )     # the bounds of the x-axis. The midpoint of these bounds determines the origin point of orientation of the plot
@@ -3691,7 +3691,7 @@ class System():
             #ax.autoscale(enable=False, axis='x')
         
         # draw things
-        if draw_body:
+        if plot_body:
             for body in self.bodyList:
                 body.draw(ax)
         
@@ -3702,11 +3702,11 @@ class System():
                 #if self.qs==0 and len(rod.Tdata) == 0:
                 #    pass
                 if isinstance(rod, Line) and rod.show:
-                    rod.drawLine(time, ax, color=color, shadow=shadow)
+                    rod.drawLine(time, ax, color=color, plot_shadow=plot_shadow)
                 #if isinstance(rod, Point):  # zero-length special case
                 #    not plotting points for now
         
-        if draw_clumps:
+        if plot_clumps:
             for point in self.pointList:
                 markersize = np.max([point.m, point.v*self.rho])**0.4094 * 0.065
                 if point.v*self.rho > point.m:   # if it has positive buoyancy
@@ -3716,7 +3716,7 @@ class System():
                     #ax.plot([point.r[0]],[point.r[1]],[point.r[2]], markerfacecolor='r', markeredgecolor='k', marker='o', markersize=5)
                     ax.plot([point.r[0]],[point.r[1]],[point.r[2]], color='k', marker='o', markersize=markersize)
                     
-        if draw_anchors:
+        if plot_anchors:
             for line in self.lineList:
                 if line.zp[0,0]==-self.depth:
                     itime = int(time/line.dt)
@@ -3735,27 +3735,27 @@ class System():
                 j = j + 1
                 if color==None and 'material' in line.type:
                     if 'chain' in line.type['material']:
-                        line.drawLine(time, ax, color=[.1, 0, 0], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[.1, 0, 0], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'rope' in line.type['material'] or 'polyester' in line.type['material']:
-                        line.drawLine(time, ax, color=[.3,.5,.5], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[.3,.5,.5], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'nylon' in line.type['material']:
-                        line.drawLine(time, ax, color=[.8,.8,.2], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[.8,.8,.2], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'buoy' in line.type['material']:
-                        line.drawLine(time, ax, color=[.6,.6,.0], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[.6,.6,.0], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'hmpe' in line.type['material']:
-                        line.drawLine(time, ax, color='tab:green', endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color='tab:green', plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'cable' in line.type['material']:
-                        line.drawLine(time, ax, color='y', endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color='y', plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     else:
-                        line.drawLine(time, ax, color=[0.5,0.5,0.5], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[0.5,0.5,0.5], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                 else:
-                    line.drawLine(time, ax, color=color, endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                    line.drawLine(time, ax, color=color, plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                 
                 # Add line labels 
-                if linelabels == True:
+                if plot_linelabels == True:
                     ax.text((line.rA[0]+line.rB[0])/2, (line.rA[1]+line.rB[1])/2, (line.rA[2]+line.rB[2])/2, j)
             
-        if cbar_tension:
+        if plot_cbar_tension:
             maxten = max([max(line.Ts) for line in self.lineList])   # find the max tension in the System
             minten = min([min(line.Ts) for line in self.lineList])   # find the min tension in the System
             bounds = range(int(minten),int(maxten), int((maxten-minten)/256)) 
@@ -3768,10 +3768,10 @@ class System():
         for point in self.pointList:
             points = []
             i = i + 1
-            if pointlabels == True:
+            if plot_pointlabels == True:
                 ax.text(point.r[0], point.r[1], point.r[2], i, c = 'r')
             '''  MH: This needs to be way more generalized/versatile if it's going to be included!
-            if draw_seabed:     # if bathymetry is true, then make squares at each anchor point
+            if plot_seabed:     # if bathymetry is true, then make squares at each anchor point
                 if point.attachedEndB[0] == 0 and point.r[2] < -400:
                     points.append([point.r[0]+250, point.r[1]+250, point.r[2]])
                     points.append([point.r[0]+250, point.r[1]-250, point.r[2]])
@@ -3784,7 +3784,7 @@ class System():
             '''
         
         # draw the seabed if requested (only works for full bathymetries so far)
-        if draw_seabed and self.seabedMod == 2:
+        if plot_seabed and self.seabedMod == 2:
 
             if rang=='hold':
                 rang = (np.min(-self.bathGrid), np.max(-self.bathGrid))
@@ -3800,7 +3800,7 @@ class System():
                 fig.colorbar(bath, shrink=cbar_bath_size, label='depth (m)')
         
         # draw water surface if requested
-        if waterplane:
+        if plot_waterplane:
             waterXs = np.array([min(xs), max(xs)])
             waterYs = np.array([min(ys), max(ys)])
             waterX, waterY = np.meshgrid(waterXs, waterYs)
@@ -3812,7 +3812,7 @@ class System():
         
         ax.set_zticks([-self.depth, 0])  # set z ticks to just 0 and seabed
         
-        if hidebox:
+        if not plot_box:
             ax.axis('off')
         
         return fig, ax  # return the figure and axis object in case it will be used later to update the plot
@@ -3847,18 +3847,18 @@ class System():
         # kwargs that can be used for plot or plot2d
         title            = kwargs.get('title'           , ""        )   # optional title for the plot
         time             = kwargs.get("time"            , 0         )   # the time in seconds of when you want to plot
-        linelabels       = kwargs.get('linelabels'      , False     )   # toggle to include line number labels in the plot
-        pointlabels      = kwargs.get('pointlabels'     , False     )   # toggle to include point number labels in the plot
-        draw_body        = kwargs.get("draw_body"       , False     )   # toggle to draw the Bodies or not
-        draw_anchors     = kwargs.get('draw_anchors'    , False     )   # toggle to draw the anchors of the mooring system or not   
-        draw_seabed      = kwargs.get('draw_seabed'     , True      )   # toggle to draw the seabed bathymetry or not
+        plot_linelabels       = kwargs.get('plot_linelabels'      , False     )   # toggle to include line number labels in the plot
+        plot_pointlabels      = kwargs.get('plot_pointlabels'     , False     )   # toggle to include point number labels in the plot
+        plot_body        = kwargs.get("plot_body"       , False     )   # toggle to draw the Bodies or not
+        plot_anchors     = kwargs.get('plot_anchors'    , False     )   # toggle to draw the anchors of the mooring system or not   
+        plot_seabed      = kwargs.get('plot_seabed'     , True      )   # toggle to draw the seabed bathymetry or not
         cmap_bath        = kwargs.get("cmap_bath"       , 'ocean'   )   # matplotlib colormap specification
         alpha            = kwargs.get("opacity"         , 1.0       )   # the transparency of the bathymetry plot_surface
         rang             = kwargs.get('rang'            , 'hold'    )   # colorbar range: if range not used, set it as a placeholder, it will get adjusted later
         cbar_bath        = kwargs.get('colorbar'        , False     )   # toggle to include a colorbar for a plot or not
         colortension     = kwargs.get("colortension"    , False     )   # toggle to draw the mooring lines in colors based on node tensions
         cmap_tension     = kwargs.get('cmap_tension'    , 'rainbow' )   # the type of color spectrum desired for colortensions
-        cbar_tension     = kwargs.get('cbar_tension'    , False     )   # toggle to include a colorbar of the tensions when colortension=True
+        plot_cbar_tension     = kwargs.get('plot_cbar_tension'    , False     )   # toggle to include a colorbar of the tensions when colortension=True
         figsize          = kwargs.get('figsize'         , (6,4)     )   # the dimensions of the figure to be plotted
         # kwargs that are currently only used in plot2d
         levels           = kwargs.get("levels"          , 7         )   # the number (or array) of levels in the contour plot
@@ -3867,7 +3867,7 @@ class System():
         plotnodes        = kwargs.get('plotnodes'       , []        )   # the list of node numbers that are desired to be plotted
         plotnodesline    = kwargs.get('plotnodesline'   , []        )   # the list of line numbers that match up with the desired node to be plotted
         label            = kwargs.get('label'           , ""        )   # the label/marker name of a line in the System
-        draw_fairlead    = kwargs.get('draw_fairlead'   , False     )   # toggle to draw large points for the fairleads
+        plot_fairlead    = kwargs.get('plot_fairlead'   , False     )   # toggle to draw large points for the fairleads
         line_width       = kwargs.get('linewidth'       , 1         )   # toggle to set the mooring line width in "drawLine2d
         marker           = kwargs.get('marker'          , 'o'       )   # the symbol used to represent points with a nonzero mass or volume
         
@@ -3879,7 +3879,7 @@ class System():
         else:
             fig = ax.get_figure()
         
-        if draw_body:
+        if plot_body:
             for body in self.bodyList:
                 #body.draw(ax)
                 r = body.r6[0:3]
@@ -3891,7 +3891,7 @@ class System():
             if isinstance(rod, Line):
                 rod.drawLine2d(time, ax, color=color, Xuvec=Xuvec, Yuvec=Yuvec)
             
-        if draw_fairlead:
+        if plot_fairlead:
             for line in self.lineList:
                 if line.number==1:
                     itime = int(time/line.dt)
@@ -3905,7 +3905,7 @@ class System():
                     plt.plot(x, y, 'o', color=c, markersize=5)
                 
                 
-        if draw_anchors:
+        if plot_anchors:
             for line in self.lineList:
                 if line.zp[0,0]==-self.depth:
                     itime = int(time/line.dt)
@@ -3950,12 +3950,12 @@ class System():
                 line.drawLine2d(time, ax, color=color, Xuvec=Xuvec, Yuvec=Yuvec, colortension=colortension, cmap=cmap_tension, plotnodes=plotnodes, plotnodesline=plotnodesline, label=label, alpha=alpha, linewidth=line_width)
 
             # Add Line labels
-            if linelabels == True:
+            if plot_linelabels == True:
                 xloc = np.dot([(line.rA[0]+line.rB[0])/2, (line.rA[1]+line.rB[1])/2, (line.rA[2]+line.rB[2])/2],Xuvec)
                 yloc = np.dot([(line.rA[0]+line.rB[0])/2, (line.rA[1]+line.rB[1])/2, (line.rA[2]+line.rB[2])/2],Yuvec)
                 ax.text(xloc,yloc,j)
         
-        if cbar_tension:
+        if plot_cbar_tension:
             maxten = max([max(line.Ts) for line in self.lineList])   # find the max tension in the System
             minten = min([min(line.Ts) for line in self.lineList])   # find the min tension in the System
             bounds = range(int(minten),int(maxten), int((maxten-minten)/256)) 
@@ -3967,13 +3967,13 @@ class System():
         i = 0 
         for point in self.pointList:
             i = i + 1
-            if pointlabels == True:
+            if plot_pointlabels == True:
                 xloc = np.dot([point.r[0], point.r[1], point.r[2]], Xuvec)
                 yloc = np.dot([point.r[0], point.r[1], point.r[2]], Yuvec)
                 ax.text(xloc, yloc, i, c = 'r')
         
         # draw the seabed if requested (only works for full bathymetries so far)
-        if draw_seabed and self.seabedMod == 2:
+        if plot_seabed and self.seabedMod == 2:
             
             X, Y = np.meshgrid(self.bathGrid_Xs, self.bathGrid_Ys)
             Z = -self.bathGrid
@@ -4115,7 +4115,8 @@ class System():
         return 
     
     
-    def animateLines(self, figure=None, axis=None, color=None, interval=200, repeat=True, delay=0, runtime=-1, **kwargs):
+    def animateLines(self, figure=None, axis=None, color=None, interval=200, 
+                     repeat=True, delay=0, runtime=-1, **kwargs):
         '''
         Parameters
         ----------
@@ -4139,21 +4140,21 @@ class System():
             Needs to be stored, returned, and referenced in a variable
         '''
         
-        bathymetry       = kwargs.get('bathymetry'     , False     )     # toggles whether to show the axes or not
+        plot_bathymetry       = kwargs.get('plot_bathymetry'     , False     )     # toggles whether to show the axes or not
         opacity          = kwargs.get('opacity'        , 1.0       )     # the transparency of the bathymetry plot_surface
-        hidebox          = kwargs.get('hidebox'        , False     )     # toggles whether to show the axes or not
+        plot_box          = kwargs.get('plot_box'        , True     )     # toggles whether to show the axes or not
         rang             = kwargs.get('rang'           , 'hold'    )     # colorbar range: if range not used, set it as a placeholder, it will get adjusted later
         speed            = kwargs.get('speed'          , 10        )     # the resolution of the animation; how fluid/speedy the animation is
         colortension     = kwargs.get("colortension"   , False     )     # toggle to draw the mooring lines in colors based on node tensions
         cmap_tension     = kwargs.get('cmap_tension'   , 'rainbow' )     # the type of color spectrum desired for colortensions
-        draw_body        = kwargs.get('draw_body'      , True      )
+        plot_body        = kwargs.get('plot_body'      , True      )
         # bound kwargs
         xbounds          = kwargs.get('xbounds'        , None      )     # the bounds of the x-axis. The midpoint of these bounds determines the origin point of orientation of the plot
         ybounds          = kwargs.get('ybounds'        , None      )     # the bounds of the y-axis. The midpoint of these bounds determines the origin point of orientation of the plot
         zbounds          = kwargs.get('zbounds'        , None      )     # the bounds of the z-axis. The midpoint of these bounds determines the origin point of orientation of the plot
 
         
-        # not adding cbar_tension colorbar yet since the tension magnitudes might change in the animation and the colorbar won't reflect that
+        # not adding plot_cbar_tension colorbar yet since the tension magnitudes might change in the animation and the colorbar won't reflect that
         # can use any other kwargs that go into self.plot()
         
         if self.qs==1:
@@ -4161,8 +4162,17 @@ class System():
             
 
         # create the figure and axes to draw the animation
-        fig, ax = self.plot(ax=axis, color=color, draw_body=draw_body, bathymetry=bathymetry, opacity=opacity, hidebox=hidebox, rang=rang, 
-                            colortension=colortension, xbounds=xbounds, ybounds=ybounds, zbounds=zbounds)
+        fig, ax = self.plot(ax=axis, 
+                            color=color, 
+                            plot_body=plot_body, 
+                            plot_bathymetry=plot_bathymetry, 
+                            opacity=opacity, 
+                            plot_box=plot_box, 
+                            rang=rang, 
+                            colortension=colortension, 
+                            xbounds=xbounds, 
+                            ybounds=ybounds, 
+                            zbounds=zbounds)
         '''
         # can do this section instead of self.plot(). They do the same thing
         fig = plt.figure(figsize=(20/2.54,12/2.54))

@@ -478,7 +478,11 @@ class Subsystem(System, Line):
             plt.show()    
     
     
-    def drawLine2d(self, Time, ax, color="k", endpoints=False, Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, colortension=False, line_depth_settings=None, plotnodes=[], plotnodesline=[],label="",cmap='rainbow', alpha=1.0, linewidth = 1):
+    def drawLine2d(self, Time, ax, color="k", plot_endpoints=False, 
+                   Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, 
+                   colortension=False, line_depth_settings=None, 
+                   plotnodes=[], plotnodesline=[],label="",cmap='rainbow', 
+                   alpha=1.0, linewidth = 1):
         '''wrapper to System.plot2d with some transformation applied
         
         Parameters
@@ -489,7 +493,7 @@ class Subsystem(System, Line):
             The axes on which to plot the line.
         color : str, optional
             The color of the line. Default is "k" (black).
-        endpoints : bool, optional
+        plot_endpoints : bool, optional
             Whether to plot the endpoints of the line. Default is False.
         Xuvec : list, optional
             The x-direction vector for 3D to 2D transformation. Default is [1, 0, 0].
@@ -582,11 +586,12 @@ class Subsystem(System, Line):
                     if self.number==plotnodesline[i]:
                         ax.plot(Xs2d[node], Ys2d[node], 'o', color=colorplot, markersize=5)
             
-            if endpoints == True:
+            if plot_endpoints == True:
                 ax.scatter([Xs2d[0], Xs2d[-1]], [Ys2d[0], Ys2d[-1]], color = colorplot)
 
 
-    def drawLine(self, Time, ax, color="k", endpoints=False, shadow=True, colortension=False, cmap_tension='rainbow'):
+    def drawLine(self, Time, ax, color="k", plot_endpoints=False, 
+                 plot_shadow=True, colortension=False, cmap_tension='rainbow'):
         '''wrapper to System.plot with some transformation applied'''
         
         for i, line in enumerate(self.lineList):
@@ -621,7 +626,7 @@ class Subsystem(System, Line):
                 #linebit.append(ax.plot(Xs, Ys, Zs, color=color, lw=lw, zorder=100))
                 ax.plot(Xs, Ys, Zs, color=line.color, lw=line.lw, zorder=100)
             
-            if shadow:
+            if plot_shadow:
                 if self.seabedMod == 0:
                     Zs = np.zeros_like(Xs)-self.depth
                 elif self.seabedMod == 1:
@@ -633,9 +638,9 @@ class Subsystem(System, Line):
                         Zs[i], _ = self.getDepthFromBathymetry(Xs0[i], Ys0[i])
                         #Zs[i] = self.sys.getDepthFromBathymetry(Xs[i], Ys[i])
 
-                ax.plot(Xs, Ys, Zs, color=[0.5, 0.5, 0.5, 0.2], lw=line.lw, zorder = 1.5) # draw shadow
+                ax.plot(Xs, Ys, -Zs, color=[0.5, 0.5, 0.5, 0.2], lw=line.lw, zorder = 1.5) # draw shadow
             
-            if endpoints == True:
+            if plot_endpoints == True:
                 #linebit.append(ax.scatter([Xs[0], Xs[-1]], [Ys[0], Ys[-1]], [Zs[0], Zs[-1]], color = color))
                 ax.scatter([Xs[0], Xs[-1]], [Ys[0], Ys[-1]], [Zs[0], Zs[-1]], color = line.color)
     

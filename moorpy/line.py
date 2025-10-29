@@ -419,7 +419,10 @@ class Line():
         
     
     
-    def drawLine2d(self, Time, ax, color="k", Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, colortension=False, cmap='rainbow', plotnodes=[], plotnodesline=[], label="", alpha=1.0,linewidth=1):
+    def drawLine2d(self, Time, ax, color="k", Xuvec=[1,0,0], Yuvec=[0,0,1], 
+                   Xoff=0, Yoff=0, colortension=False, cmap='rainbow', 
+                   plotnodes=[], plotnodesline=[], label="", alpha=1.0,
+                   linewidth=1):
         '''Draw the line on 2D plot (ax must be 2D)
 
         Parameters
@@ -501,7 +504,8 @@ class Line():
 
     
 
-    def drawLine(self, Time, ax, color="k", endpoints=False, shadow=True, colortension=False, cmap_tension='rainbow'):
+    def drawLine(self, Time, ax, color="k", plot_endpoints=False, 
+                 plot_shadow=True, colortension=False, cmap_tension='rainbow'):
         '''Draw the line in 3D
         
         Parameters
@@ -569,7 +573,7 @@ class Line():
             else:
                 linebit.append(ax.plot(Xs, Ys, Zs, color=color, lw=lw, zorder=100))
                 
-            if shadow:
+            if plot_shadow:
                 if self.sys.seabedMod == 0:
                     Zs = np.zeros_like(Xs)-self.sys.depth
                 elif self.sys.seabedMod == 1:
@@ -582,7 +586,7 @@ class Line():
 
                 ax.plot(Xs, Ys, Zs, color=[0.5, 0.5, 0.5, 0.2], lw=lw, zorder = 1.5) # draw shadow
             
-            if endpoints == True:
+            if plot_endpoints == True:
                 linebit.append(ax.scatter([Xs[0], Xs[-1]], [Ys[0], Ys[-1]], [Zs[0], Zs[-1]], color = color))
                 
                     
