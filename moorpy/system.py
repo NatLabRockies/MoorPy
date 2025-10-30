@@ -3796,6 +3796,8 @@ class System():
             
             if cbar_bath_size!=1.0:    # make sure the colorbar is turned on just in case it isn't when the other colorbar inputs are used
                 cbar_bath=True
+            else:
+                cbar_bath = False
             if cbar_bath:
                 fig.colorbar(bath, shrink=cbar_bath_size, label='depth (m)')
         
