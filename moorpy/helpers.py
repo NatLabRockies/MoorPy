@@ -722,7 +722,7 @@ def getLineProps(dnommm, material, lineProps=None, source=None, name="", rho=102
     
     # stiffness values for viscoelastic approach 
     EAd = mat['EAd_MBL']*MBL     # dynamic stiffness constant: Krd alpha term x MBL [N]
-    EAd_Lm = mat['EAd_MBL_Lm']   # dynamic stiffness Lm slope: Krd beta term (to be multiplied by mean load) [-]
+    EAd_Lm = mat['EAD_LM']   # dynamic stiffness Lm slope: Krd beta term (to be multiplied by mean load) [-]
     
     # Set up a main identifier for the linetype unless one is provided
     if name=="":
@@ -797,7 +797,7 @@ def loadLineProps(source):
         output[mat]['EA_dmax'  ] = getFromDict(props, 'EA_dmax'  , default=-1.0) # -1 to disable checking
         output[mat]['EA_MBL'   ] = getFromDict(props, 'EA_MBL'   , default=0.0)
         output[mat]['EAd_MBL'  ] = getFromDict(props, 'EAd_MBL'  , default=0.0)
-        output[mat]['EAd_MBL_Lm']= getFromDict(props, 'EAd_MBL_Lm',default=0.0)
+        output[mat]['EAD_LM'   ] = getFromDict(props, 'EAD_LM'   ,default=0.0)
         output[mat]['Cd'       ] = getFromDict(props, 'Cd'       , default=0.0)
         output[mat]['Cd_ax'    ] = getFromDict(props, 'Cd_ax'    , default=0.0)
         output[mat]['Ca'       ] = getFromDict(props, 'Ca'       , default=0.0)

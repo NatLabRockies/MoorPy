@@ -89,7 +89,7 @@ information must include a static stiffness value (EAs), and a
 dynamic stiffness value (EAd). An additional factor on EAd that
 scales with mean tension (EAd_Lm) can also be included. When using
 a mooring line properties library (i.e., a yaml file), these values
-should be specified by the EA_MBL, EAd_MBL, and EAd_MBL_Lm keywords,
+should be specified by the EA_MBL, EAd_MBL, and EAD_LM keywords,
 respectively. See the file moorprops_default.yaml for 
 more information.
 
