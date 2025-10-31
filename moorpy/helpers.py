@@ -668,29 +668,21 @@ def getLineProps(dnommm, material, lineProps=None, source=None, name="", rho=102
     if not material in lineProps:
         raise ValueError(f'Specified mooring line material, {material}, is not in the database.')
     
+    # Shorthand for the sub-dictionary of properties for the material in question  
+    mat = lineProps[material]       
+    
+    # Check valid diameter ranges
+    if mat['d_max'] >= 0 and d > mat['d_max']: # if a max value is given and the diameter is greater than the max
+        raise Exception(f"Input diameter {d} m is greater than the max valid value of {mat['d_max']} m for {material}.")
+    if mat['d_min'] >= 0 and d < mat['d_min']: # if a min value is given and the diameter is less than the min
+        raise Exception(f"Input diameter {d} m is less than the min valid value of {mat['d_min']} m for {material}.")
+        
     # calculate the relevant properties for this specific line type
-    mat = lineProps[material]       # shorthand for the sub-dictionary of properties for the material in question    
     d = dnommm*0.001                # convert nominal diameter from mm to m      
     mass = mat['mass_d2']*d**2
-
-    # Checking valid diameter ranges for MBL
-    if mat['MBL_dmax'] >= 0 and mat['MBL_dmin'] >= 0: # if min and max values given and the diameter outside of the range
-        if d > mat['MBL_dmax'] or d < mat['MBL_dmin']:
-            raise Exception(f"Input diameter {d} m is outside of the valid range for the MBL curve of {mat['MBL_dmin']}-{mat['MBL_dmax']} m")
-    elif mat['MBL_dmax'] >= 0 and d > mat['MBL_dmax']: # if a max value is given and the diameter is greater than the max
-        raise Exception(f"Input diameter {d} m is greater than the max valid value for the MBL curve of {mat['MBL_dmax']} m")
-    elif mat['MBL_dmin'] >= 0 and d < mat['MBL_dmin']: # if a min value is given and the diameter is less than the min
-        raise Exception(f"Input diameter {d} m is less than the min valid value for the MBL curve of {mat['MBL_dmin']} m")
+       
     MBL  = mat[ 'MBL_0'] + mat[ 'MBL_d']*d + mat[ 'MBL_d2']*d**2 + mat[ 'MBL_d3']*d**3 
 
-    # Checking valid diameter ranges fo EA
-    if mat['EA_dmax'] >= 0 and mat['EA_dmin'] >= 0: # if min and max values given and the diameter outside of the range
-        if d > mat['EA_dmax'] or d < mat['EA_dmin']:
-            raise Exception(f"Input diameter {d} m is outside of the valid range for the EA curve of {mat['EA_dmin']}-{mat['EA_dmax']} m")
-    elif mat['EA_dmax'] >= 0 and d > mat['EA_dmax']: # if a max value is given and the diameter is greater than the max
-        raise Exception(f"Input diameter {d} m is greater than the max valid value for the EA curve of {mat['EA_dmax']} m")
-    elif mat['EA_dmin'] >= 0 and d < mat['EA_dmin']: # if a min value is given and the diameter is less than the min
-        raise Exception(f"Input diameter {d} m is less than the min valid value for the EA curve of {mat['EA_dmin']} m")
     EA   = mat[  'EA_0'] + mat[  'EA_d']*d + mat[  'EA_d2']*d**2 + mat[  'EA_d3']*d**3 + mat['EA_MBL']*MBL 
 
     cost =(mat['cost_0'] + mat['cost_d']*d + mat['cost_d2']*d**2 + mat['cost_d3']*d**3 
@@ -773,9 +765,33 @@ def loadLineProps(source):
     elif type(source) is str:
         with open(source) as file:
             source = yaml.load(file, Loader=yaml.FullLoader)
-
     else:
         raise Exception("loadLineProps supplied with invalid source")
+
+
+    # Check if what's been passed in or loaded is already fully processed
+    
+    complete = True  # set this to false if anything in the dictionary falls short
+    
+    parameters = ['mass_d2',
+        'EA_0', 'EA_d', 'EA_d2', 'EA_d3',
+        'EA_MBL', 'EAd_MBL', 'EAd_MBL_Lm',
+        'Cd', 'Cd_ax', 'Ca', 'Ca_ax',
+        'MBL_0', 'MBL_d', 'MBL_d2', 'MBL_d3',
+        'dvol_dnom',
+        'cost_0', 'cost_d', 'cost_d2', 'cost_d3', 'cost_mass', 'cost_EA', 'cost_MBL',
+        'd_min', 'd_max']  # the required parameters
+    
+    for mat, props in source.items():
+        for par in parameters:
+            if not par in props:
+                complete = False
+                break  # if anything is missing, declare incomplete
+        if not complete:
+            break
+            
+    if complete:  # if nothing is missing, use this dictionary directly as-s
+        return source
 
     if 'lineProps' in source:
         lineProps = source['lineProps']
@@ -793,8 +809,6 @@ def loadLineProps(source):
         output[mat]['EA_d'     ] = getFromDict(props, 'EA_d'     , default=0.0)
         output[mat]['EA_d2'    ] = getFromDict(props, 'EA_d2'    , default=0.0)
         output[mat]['EA_d3'    ] = getFromDict(props, 'EA_d3'    , default=0.0)
-        output[mat]['EA_dmin'  ] = getFromDict(props, 'EA_dmin'  , default=-1.0) # -1 to disable checking
-        output[mat]['EA_dmax'  ] = getFromDict(props, 'EA_dmax'  , default=-1.0) # -1 to disable checking
         output[mat]['EA_MBL'   ] = getFromDict(props, 'EA_MBL'   , default=0.0)
         output[mat]['EAd_MBL'  ] = getFromDict(props, 'EAd_MBL'  , default=0.0)
         output[mat]['EAD_LM'   ] = getFromDict(props, 'EAD_LM'   ,default=0.0)
@@ -806,8 +820,6 @@ def loadLineProps(source):
         output[mat]['MBL_d'    ] = getFromDict(props, 'MBL_d'    , default=0.0)
         output[mat]['MBL_d2'   ] = getFromDict(props, 'MBL_d2'   , default=0.0)
         output[mat]['MBL_d3'   ] = getFromDict(props, 'MBL_d3'   , default=0.0)
-        output[mat]['MBL_dmin' ] = getFromDict(props, 'MBL_dmin' , default=-1.0) # -1 to disable checking
-        output[mat]['MBL_dmax' ] = getFromDict(props, 'MBL_dmax' , default=-1.0) # -1 to disable checking
         output[mat]['dvol_dnom'] = getFromDict(props, 'dvol_dnom', default=1.0)
 
         # special handling if material density is provided
@@ -827,6 +839,8 @@ def loadLineProps(source):
         output[mat]['cost_mass'] = getFromDict(props, 'cost_mass', default=0.0)
         output[mat]['cost_EA'  ] = getFromDict(props, 'cost_EA'  , default=0.0)
         output[mat]['cost_MBL' ] = getFromDict(props, 'cost_MBL' , default=0.0)
+        output[mat]['d_min'    ] = getFromDict(props, 'd_min'    , default=-1.0) # -1 to disable checking
+        output[mat]['d_max'    ] = getFromDict(props, 'd_dmax'   , default=-1.0) # -1 to disable checking
 
     return output
 
