@@ -821,7 +821,8 @@ def loadLineProps(source):
         output[mat]['MBL_d2'   ] = getFromDict(props, 'MBL_d2'   , default=0.0)
         output[mat]['MBL_d3'   ] = getFromDict(props, 'MBL_d3'   , default=0.0)
         output[mat]['dvol_dnom'] = getFromDict(props, 'dvol_dnom', default=1.0)
-
+        output[mat]['creep_rate'] = getFromDict(props, 'creep_rate', default=0.0)
+        output[mat]['corrosion_rate'] = getFromDict(props, 'corrosion_rate', default=0.0)
         # special handling if material density is provided
         if 'density' in props:
             if 'dvol_dnom' in props:
