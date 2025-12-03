@@ -1343,6 +1343,25 @@ class System():
             L.append("TypeName      Diam     Mass/m     EA     BA/-zeta     EI        Cd      Ca      CdAx    CaAx")
             L.append("(name)        (m)      (kg/m)     (N)    (N-s/-)    (N-m^2)     (-)     (-)     (-)     (-)")
             
+            # Create unique short keys for the line types
+            # build mapping from old keys → new short keys
+            key_map = {}
+            for i, key in enumerate(self.lineTypes.keys()):
+                key_map[key] = f"line_{i+1}"
+
+            # update all line.type['name'] values using the mapping
+            for line in self.lineList:
+                old_key = line.type['name']
+                if old_key in key_map:
+                    line.type['name'] = key_map[old_key]
+
+            # rebuild lineTypes with the new keys
+            new_lineTypes = {}
+            for old_key, item in self.lineTypes.items():
+                new_lineTypes[key_map[old_key]] = item
+
+            self.lineTypes = new_lineTypes
+
             j = 0 # count for list of Lms 
             for key, lineType in self.lineTypes.items(): 
                 di = lineTypeDefaults.copy()  # start with a new dictionary of just the defaults
