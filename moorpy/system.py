@@ -1347,7 +1347,7 @@ class System():
             # build mapping from old keys → new short keys
             key_map = {}
             for i, key in enumerate(self.lineTypes.keys()):
-                key_map[key] = f"line_{i+1}"
+                key_map[key] = f"type_{i+1}"
 
             # update all line.type['name'] values using the mapping
             for line in self.lineList:
