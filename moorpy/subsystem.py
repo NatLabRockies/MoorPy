@@ -386,7 +386,7 @@ class Subsystem(System, Line):
         equilibrium happens in the local 2D plane. Values in this local 
         frame are also saved. 
         '''
-        
+
         if tol==0:
             tol=self.eqtol
         
@@ -651,9 +651,8 @@ class Subsystem(System, Line):
         'span' (shouldn't change), and B is set based on offset and the
         rad_fair/z_fair setting. Optional argument z can be added for a z offset.
         '''
-        
+
         self.offset = float(offset)
-        
         # Use static EA values and unstretched lengths
         self.revertToStaticStiffness()
 
@@ -665,12 +664,12 @@ class Subsystem(System, Line):
         else:
             self.rA = np.array([-self.span-self.rad_fair, 0, self.rA[2]])
             self.rB = np.array([-self.rad_fair + offset, 0, self.z_fair+z]) 
-            
+
         if hasattr(self, 'maxIter'):
             self.staticSolve(tol=self.eqtol, maxIter = self.maxIter)  # solve the subsystem
         else:
             self.staticSolve(tol=self.eqtol)
-            
+  
         # Store some values at this offset position that may be used later
         for i, line in enumerate(self.lineList):
             self.TeM[i,0] = np.linalg.norm(line.fA)

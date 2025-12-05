@@ -15,7 +15,7 @@ ms.addPoint(1, [-100, 0,-50])
 ms.addPoint(1, [ 100, 0,  0])
 ms.addPoint(0, [   0, 0,-90])
 
-ms.addLineType("chain",0.1, 50.0, 1e12)
+ms.setLineType(120,"chain",name="chain")
 
 ms.addLine(120, "chain") 
 ms.addLine(200, "chain")

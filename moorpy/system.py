@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import yaml
 import warnings
 from os import path
+from copy import deepcopy
 
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve, MatrixRankWarning
@@ -383,43 +384,6 @@ class System():
         
         self.pointList[-1].attachLine(lineID, endB)
         
-    
-    def addLineType(self, type_string, d, mass, EA, name=""):
-        '''Convenience function to add a LineType to a mooring system or adjust
-        the values of an existing line type if it has the same name/key.
-
-        Parameters
-        ----------
-        type_string : string
-            string identifier of the LineType object that is to be added.
-        d : float
-            volume-equivalent diameter [m].
-        mass : float
-            mass of line per length, or mass density [kg/m], used to calculate weight density (w) [N/m]
-        EA : float
-            extensional stiffness [N].
-
-        Returns
-        -------
-        None.
-
-        '''
-        if len(name)==0:
-            name=type_string+str(d)
-        
-        
-        w = (mass - np.pi/4*d**2 *self.rho)*self.g
-        
-        lineType = dict(name=name, d_vol=d, w=w, m=mass, EA=EA, material=type_string)   # make dictionary for this line type
-        
-        lineType['material'] = 'unspecified'  # fill this in so it's available later
-        
-        if type_string in self.lineTypes:                                # if there is already a line type with this name
-            self.lineTypes[type_string].update(lineType)                 # update the existing dictionary values rather than overwriting with a new dictionary
-        else:
-            self.lineTypes[type_string] = lineType
-
-        # <<< the "name" keyword in this method is confusing in that it isn't the index key. Does it have a purpose? <<<
 
     def captureCompositeLine(self,point_id):
         if not hasattr(self,'compositeLineList'):
@@ -427,40 +391,113 @@ class System():
         
         self.compositeLineList.append(CompositeLine(self,point_id))
 
-    def setLineType(self, dnommm, material, source=None, name="", **kwargs):
+    def setLineType(self, dnommm=None, material=None, source=None, name="0", 
+                    mass=None, d_vol=None, w=None, EA=None, lineType=None,
+                    overwrite=True, **kwargs):
         '''Add or update a System lineType using the new dictionary-based method.
 
         Parameters
         ----------
-        dnommm : float
-            nominal diameter [mm].
-        material : string
-            string identifier of the material type be used.
+        dnommm : float, optional
+            nominal diameter [mm]. Default is None
+        material : string, optional
+            string identifier of the material type be used. Default is None
         source : dict or filename (optional)
-            YAML file name or dictionary containing line property scaling coefficients. If not provided,
+            YAML file name or dictionary containing line property scaling coefficients. 
+            If not provided but dnommm and material have been provided,
             whatever has already been loaded into the MoorPy system will be used.
         name : string (optional)
-            Identifier for the line type (otherwise will be generated automatically).
+            Identifier for the line type. Default is "0"
+        mass : float, optonal
+            mass/m [kg/m] of mooring line material. Default is None. 
+            Not needed if dnommm and material or lineType provided unless mass does not follow scaling
+        d_vol : float, optional
+            volumetric diameter [m]. Default is None.
+            Not needed if dnommm and material or lineType provided unless d_vol does not follow scaling
+        w : float, optional
+            weight/m [N/m] of mooring line material. Default is None.
+            Not needed if dnommm and material or lineType provided unless w does not follow scaling
+        EA : float, optional
+            stiffness [N] of mooring line material. Default is None.
+            Not needed if dnommm and material or lineType provided unless EA does not follow scaling
+        lineType : dict, optional
+            Dictionary containing line type properties such as m, material, EA, d_nom
+            If lineType provided, none of the previous inputs are required.
+        overwrite : bool, optional
+            Controls whether or not to overwrite a lineType that has the same 
+            string identifier as the input name. Default is True. 
 
         Returns
         -------
-        None.
+        lineType
         '''
- 
-        # compute the actual values for this line type
-        if source==None:
-            lineType = getLineProps(dnommm, material, lineProps=self.lineProps, name=name, rho=self.rho, g=self.g)  
+        if lineType is None: # build out lineType dict
+            if dnommm is not None:
+                d_nom = dnommm/1000
+            
+            if dnommm is not None and material is not None:
+                # compute the actual values for this line type from MoorProps file
+                if source==None:
+                    lineType = getLineProps(dnommm, material, lineProps=self.lineProps, name=name, rho=self.rho, g=self.g)  
+                else:
+                    lineType = getLineProps(dnommm, material, source=source, name=name, rho=self.rho, g=self.g) 
+                # update any values that were explicitly defined by user
+                upd = False
+                if d_vol is not None:
+                    lineType['d_vol'] = d_vol
+                    upd = True
+                if w is not None:
+                    lineType['w'] = w
+                    upd = True
+                if mass is not None:
+                    lineType['m'] = mass
+                    upd = True
+                if EA is not None:
+                    lineType['EA'] = EA
+                    upd = True
+                
+                if upd:
+                    lineType['info'] = lineType['info']+' and altered by user inputs'
+                
+            else:
+                # create dict directly from given information
+                lineType = dict(name=name, d_vol=d_vol, w=w, m=mass, EA=EA, material=material, d_nom=d_nom)   # make dictionary for this line type
+                
+            
         else:
-            lineType = getLineProps(dnommm, material, source=source, name=name, rho=self.rho, g=self.g)  
-        
-        lineType.update(kwargs)                      # add any custom arguments provided in the call to the lineType's dictionary
-        
-        # add the dictionary to the System's lineTypes master dictionary
-        if lineType['name'] in self.lineTypes:                                # if there is already a line type with this name
-            self.lineTypes[lineType['name']].update(lineType)                 # update the existing dictionary values rather than overwriting with a new dictionary
-        else:
-            self.lineTypes[lineType['name']] = lineType                       # otherwise save a new entry
+            # check if important keys exist, if not add them with None value
+            lineType['w'] = lineType.get('w')
+            lineType['m'] = lineType.get('m')
+            lineType['EA'] = lineType.get('EA')
+            lineType['d_nom'] = lineType.get('d_nom')
+            lineType['d_vol'] = lineType.get('d_vol')
+            lineType['material'] = lineType.get('material')
+            
+            
+        # calculate some things if they don't exist yet
+        if lineType['w'] is None and (lineType['m'] is not None and lineType['d_vol'] is not None):
+            lineType['w'] = (lineType['m'] - np.pi/4*lineType['d_vol']**2 *self.rho)*self.g
+        elif lineType['d_vol'] is None and (lineType['m'] is not None and lineType['w'] is not None):
+            lineType['d_vol'] = np.sqrt(4/(self.rho*np.pi)*(lineType['m'] - lineType['w']/self.g))
 
+        # update the line type with any kwargs
+        lineType.update(kwargs)  # add any custom arguments provided in the call to the lineType's dictionary
+        
+        if name in self.lineTypes and overwrite==True:                                # if there is already a line type with this name
+            self.lineTypes[name].update(lineType)                 # update the existing dictionary values rather than overwriting with a new dictionary
+        elif name in self.lineTypes and overwrite==False:         # if instructed not to overwrite linetpyes of the same name
+            if self.lineTypes[name] != lineType:                  # check if dict is the same for new and old line type
+                counter = 1 # initiate counter to adjust name
+                type_string_start = deepcopy(name)
+                while name in self.lineTypes: # keep incrementing counter and trying names until it doesn't match an existing one
+                    name = type_string_start+'_'+str(counter) # try adjusted name
+                    counter += 1 # increment counter
+                self.lineTypes[name] = lineType
+        else:
+            self.lineTypes[name] = lineType
+            
+        self.lineTypes[name]['name'] = name
+    
         return lineType                              # return the dictionary in case it's useful separately
 
     def setPointType(self, design, source = None, name = "", **kwargs):

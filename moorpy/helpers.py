@@ -1827,13 +1827,14 @@ def ss2lines(ms, nsegs=10):
     sub_idx = 0
     newly_created_lines = []
     shared_point_map = {}
+    
     # Use a stable key per original point (coordinates are fine if stable)
     def _pt_key(P):
         # round to avoid tiny float diffs; include type to be safer
         return (round(P.r[0], 6), round(P.r[1], 6), round(P.r[2], 6), int(P.type))    
     for _ in range(subsystemCount):
         # get subsystem object
-        ss = ms.lineList[sub_idx]   
+        ss = ms.lineList[sub_idx]  
         types = []
         lengths = []
         points = []
@@ -1841,9 +1842,11 @@ def ss2lines(ms, nsegs=10):
         for i in range(0,len(ss.lineList)):
             types.append(ss.lineList[i].type)
             lengths.append(ss.lineList[i].L)
-            if not types[-1]['name'] in ms.lineTypes:
-                # add type to lineTypes list
-                ms.lineTypes[types[-1]['name']] = types[-1]
+            types[-1] = ms.setLineType(name=types[-1]['name'], 
+                                               lineType=types[-1],
+                                               overwrite=False)
+                               
+
         for i,spt in enumerate(ss.pointList):
             # gather all info about the points in the subsystem
             points.append({'r':spt.r,'m':spt.m,'v':spt.v,'CdA':spt.CdA,'d':spt.d,'type':spt.type,'Ca':spt.Ca})
