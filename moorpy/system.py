@@ -1099,7 +1099,7 @@ class System():
 
 
     def unload(self, fileName, MDversion=2, line_dL=0, rod_dL=0, flag='p', 
-               outputList=[], Lm=[0], T_half=42, phi=None, dynamicStiffness = False, MDoptionsDict={}):
+               outputList=[], Lm=[0], T_half=42, phi=None, dynamicStiffness = False, cleanLineTypeName=False, MDoptionsDict={}):
         '''Unloads a MoorPy system into a MoorDyn-style input file
 
         Parameters
@@ -1125,6 +1125,8 @@ class System():
             if true, automatically activateDynamicStiffness to calculate dynamic EA
         MDoptionsDict: dictionary, optional
             MoorDyn Options. If not given, default options are considered.
+        cleanLineTypeName: bool, optional
+            If true, line type names will be renamed to "type_{counter}" to avoid long names that may cause issues in MoorDyn.
         Returns
         -------
         None.
@@ -1380,24 +1382,25 @@ class System():
             L.append("TypeName      Diam     Mass/m     EA     BA/-zeta     EI        Cd      Ca      CdAx    CaAx")
             L.append("(name)        (m)      (kg/m)     (N)    (N-s/-)    (N-m^2)     (-)     (-)     (-)     (-)")
             
-            # Create unique short keys for the line types
-            # build mapping from old keys → new short keys
-            key_map = {}
-            for i, key in enumerate(self.lineTypes.keys()):
-                key_map[key] = f"type_{i+1}"
+            if cleanLineTypeName:
+                # Create unique short keys for the line types
+                # build mapping from old keys → new short keys
+                key_map = {}
+                for i, key in enumerate(self.lineTypes.keys()):
+                    key_map[key] = f"type_{i+1}"
 
-            # update all line.type['name'] values using the mapping
-            for line in self.lineList:
-                old_key = line.type['name']
-                if old_key in key_map:
-                    line.type['name'] = key_map[old_key]
+                # update all line.type['name'] values using the mapping
+                for line in self.lineList:
+                    old_key = line.type['name']
+                    if old_key in key_map:
+                        line.type['name'] = key_map[old_key]
 
-            # rebuild lineTypes with the new keys
-            new_lineTypes = {}
-            for old_key, item in self.lineTypes.items():
-                new_lineTypes[key_map[old_key]] = item
+                # rebuild lineTypes with the new keys
+                new_lineTypes = {}
+                for old_key, item in self.lineTypes.items():
+                    new_lineTypes[key_map[old_key]] = item
 
-            self.lineTypes = new_lineTypes
+                self.lineTypes = new_lineTypes
 
             j = 0 # count for list of Lms 
             for key, lineType in self.lineTypes.items(): 
