@@ -1966,7 +1966,7 @@ def ss2lines(ms, nsegs=10):
                     curr_pt_idx,
                     [ms.pointList[curr_pt_idx - 1].r[0] - ms.bodyList[points[i]['body']].r6[0],
                     ms.pointList[curr_pt_idx - 1].r[1] - ms.bodyList[points[i]['body']].r6[1],
-                    ms.pointList[curr_pt_idx - 1].r[2]]
+                    ms.pointList[curr_pt_idx - 1].r[2] - ms.bodyList[points[i]['body']].r6[2]]
                 )
             if i > 0:
                 # this same point is end B for previous line
