@@ -468,8 +468,6 @@ class System():
             # check if important keys exist, if not add them with None value
             lineType['w'] = lineType.get('w')
             lineType['m'] = lineType.get('m')
-            lineType['EA'] = lineType.get('EA')
-            lineType['d_nom'] = lineType.get('d_nom')
             lineType['d_vol'] = lineType.get('d_vol')
             lineType['material'] = lineType.get('material')
             
@@ -490,7 +488,7 @@ class System():
                 counter = 1 # initiate counter to adjust name
                 type_string_start = deepcopy(name)
                 while name in self.lineTypes: # keep incrementing counter and trying names until it doesn't match an existing one
-                    name = type_string_start+'_'+str(counter) # try adjusted name
+                    name = str(type_string_start)+'_'+str(counter) # try adjusted name
                     counter += 1 # increment counter
                 self.lineTypes[name] = lineType
         else:
