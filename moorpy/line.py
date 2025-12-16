@@ -53,7 +53,7 @@ class Line():
         self.type = lineType    # dictionary of a System.lineTypes entry
         self.cost = {}          # empty dictionary to contain cost information
         
-        if not self.isRod:
+        if 'EA' in self.type and not self.isRod:
             self.EA = self.type['EA']  # use the default stiffness value for now (may be modified if using nonlinear elasticity) [N]
         
         self.nNodes = int(nSegs) + 1
@@ -858,7 +858,8 @@ class Line():
                 raise LineError(self.number, error.message)       
         #If EA isnt found then we will use the ten-str relationship defined in the input file 
         else:
-            (fAH, fAV, fBH, fBV, info) = nonlinear(LH, LV, self.L, self.type['Str'], self.type['Ten'],np.linalg.norm(w_total)) 
+            (fAH, fAV, fBH, fBV, info) = nonlinear(LH, LV, self.L, self.type['Str'], self.type['Ten'],
+                                                   np.linalg.norm(w_total), nNodes=self.nNodes, plots=profiles) 
     
     
         # save line profile coordinates in global frame (involves inverse rotation)
