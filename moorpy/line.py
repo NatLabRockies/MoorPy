@@ -858,9 +858,10 @@ class Line():
                 raise LineError(self.number, error.message)       
         #If EA isnt found then we will use the ten-str relationship defined in the input file 
         else:
+
             (fAH, fAV, fBH, fBV, info) = nonlinear(LH, LV, self.L, self.type['Str'], self.type['Ten'],
                                                    np.linalg.norm(w_total), nNodes=self.nNodes, plots=profiles) 
-    
+
     
         # save line profile coordinates in global frame (involves inverse rotation)
         if profiles > 0:
