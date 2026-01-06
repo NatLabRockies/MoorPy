@@ -94,8 +94,8 @@ AnchorProps:
   gravity       :
     matcost_m    :  5.40e-1   # material cost per mass [2024$/kg]
 
-  suction       : # not in OMAE2025-156384 because old data
-    matcost_m    :  10.25       # material cost per mass [$/kg] - from old number in MoorProps.py
+  suction       : # not in OMAE2025-156384
+    matcost_m    :  4.435       # material cost per mass [$/kg] - average from Task 49 Design Basis 
     # instcost     :  211610.58   # baseline installation cost offset [$] - from 179331*euros2dollars(1.18) in MoorProps.py
     # decomcost    :  148127.76   # baseline decommissioning cost offset [$] - from 125532*euros2dollars(1.18) in MoorProps.py
 
