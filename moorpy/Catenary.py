@@ -89,7 +89,7 @@ def catenary(XF, ZF, L, EA, W, CB=0, alpha=0, HF0=0, VF0=0, Tol=0.000001,
     # compute height of each end off seabed
     hA = max(0, -CB)
     hB = ZF + hA - XF*np.tan(np.radians(alpha))
-    if abs(hB) < 0.001*L:
+    if abs(hB) < 1e-5:  # only catch hB's < 1 mm (numerical noise) - using absolute threshold avoids zeroing intentionally small heights (regardless of alpha)
         hB = 0  # small adjustment to allow margin for error when end B is on the seabed
     if hB < 0: 
         breakpoint()
