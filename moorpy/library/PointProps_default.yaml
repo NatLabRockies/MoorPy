@@ -87,7 +87,7 @@ AnchorProps:
     # decomcost    :     # baseline decommissioning cost offset [$]
 
   dea: 
-    matcost_m    :  4.15      # material cost per mass [2024$/kg]
+    matcost_m    :  5.705      # material cost per mass [$/kg] - average from Task 49 Design Basis
     # instcost     :  192986.64   # baseline installation cost offset [$] - from 163548*euros2dollars(1.18) in MoorProps.py
     # decomcost    :  270181.06   # baseline decommissioning cost offset [$] - from 228967*euros2dollars(1.18) in MoorProps.py
 
