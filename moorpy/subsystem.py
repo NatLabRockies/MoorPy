@@ -630,15 +630,14 @@ class Subsystem(System, Line):
                 if self.seabedMod == 0:
                     Zs = np.zeros_like(Xs)-self.depth
                 elif self.seabedMod == 1:
-                    Zs = self.depth - self.xSlope*Xs - self.ySlope*Ys
+                    Zs = -self.depth + self.xSlope*Xs + self.ySlope*Ys
                 elif self.seabedMod == 2:
                     Zs = np.zeros(len(Xs))
                     for i in range(len(Xs)):
                         # Can get depths from the Subsystem's local grid
-                        Zs[i], _ = self.getDepthFromBathymetry(Xs0[i], Ys0[i])
-                        #Zs[i] = self.sys.getDepthFromBathymetry(Xs[i], Ys[i])
-
-                ax.plot(Xs, Ys, -Zs, color=[0.5, 0.5, 0.5, 0.2], lw=line.lw, zorder = 1.5) # draw shadow
+                        Zs[i] = -self.getDepthFromBathymetry(Xs0[i], Ys0[i], normal=False)
+                
+                ax.plot(Xs, Ys, Zs, color=[0.5, 0.5, 0.5, 0.2], lw=line.lw, zorder = 1.5) # draw shadow
             
             if plot_endpoints == True:
                 #linebit.append(ax.scatter([Xs[0], Xs[-1]], [Ys[0], Ys[-1]], [Zs[0], Zs[-1]], color = color))

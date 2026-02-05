@@ -3541,7 +3541,7 @@ class System():
                 line.seabedMod = 2  # Ensure the Subsystem knows there's bathymetry
     
     
-    def getDepthFromBathymetry(self, x, y):   #BathymetryGrid, BathGrid_Xs, BathGrid_Ys, LineX, LineY, depth, nvec)
+    def getDepthFromBathymetry(self, x, y, normal=True):   #BathymetryGrid, BathGrid_Xs, BathGrid_Ys, LineX, LineY, depth, nvec)
         ''' interpolates local seabed depth and normal vector
         
         Parameters
@@ -3555,6 +3555,8 @@ class System():
             local seabed depth (positive down) [m]
         nvec : array of size 3
             local seabed surface normal vector (positive out) 
+        normal : bool
+            Whether to also return the normal vector (default True).
         '''
         
         # if no bathymetry info stored, just return uniform depth
@@ -3596,7 +3598,11 @@ class System():
             c0y    = c00 *(1.0-fy) + c01 *fy
             c1y    = c10 *(1.0-fy) + c11 *fy
             depth  = cx0 *(1.0-fy) + cx1 *fy
-
+            
+            # If the normal vector isn't requested, stop here and return depth
+            if not normal:
+                return depth
+            
             # get local slope
             dx = self.bathGrid_Xs[ix1] - self.bathGrid_Xs[ix0]
             dy = self.bathGrid_Ys[iy1] - self.bathGrid_Ys[iy0]

@@ -577,13 +577,12 @@ class Line():
                 if self.sys.seabedMod == 0:
                     Zs = np.zeros_like(Xs)-self.sys.depth
                 elif self.sys.seabedMod == 1:
-                    Zs = self.sys.depth - self.sys.xSlope*Xs - self.sys.ySlope*Ys
+                    Zs = -self.sys.depth + self.sys.xSlope*Xs + self.sys.ySlope*Ys
                 elif self.sys.seabedMod == 2:
                     Zs = np.zeros(len(Xs))
                     for i in range(len(Xs)):
-                        z,_ = self.sys.getDepthFromBathymetry(Xs[i], Ys[i])
-                        Zs[i] = -z
-
+                        Zs[i] = -self.sys.getDepthFromBathymetry(Xs[i], Ys[i], normal=False)
+                
                 ax.plot(Xs, Ys, Zs, color=[0.5, 0.5, 0.5, 0.2], lw=lw, zorder = 1.5) # draw shadow
             
             if plot_endpoints == True:
