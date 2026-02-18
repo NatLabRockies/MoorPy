@@ -1553,7 +1553,7 @@ def lines2subsystem(lines,points, ms,span=None,case=0):
         
     return(ms)
 
-def lengthAwareSegmentation(lineList, factor=1):
+def lengthAwareSegmentation(lineList, factor=[1,1], w_cutoff = 1000):
     '''Function to segment a set of lines based on their lengths 
     to give appropriate segment lengths.
 
@@ -1561,6 +1561,10 @@ def lengthAwareSegmentation(lineList, factor=1):
     ----------
     lineList : list
         List of line objects to segment
+    factor : list
+        List of factors to multiply segment # by
+    w_cutoff : float
+        apply factor [0] if linetype wet weight is less than w_cutoff, apply factor[1] if greater than w_cutoff
 
     Returns
     -------
@@ -1569,7 +1573,10 @@ def lengthAwareSegmentation(lineList, factor=1):
     '''
     for line in lineList:
         line.nNodes = int(np.ceil( np.sqrt(np.maximum(1, line.L-10))/2 ) + 1)
-        line.nNodes = int(line.nNodes * factor)
+        if line.type['w'] < w_cutoff:
+            line.nNodes = int(line.nNodes * factor[0])
+        else:
+            line.nNodes = int(line.nNodes *factor[1])
         if line.nNodes == 1:
             line.nNodes += 1  # minimum of 1 segment (two nodes)
             
