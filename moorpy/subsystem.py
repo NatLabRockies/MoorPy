@@ -591,11 +591,14 @@ class Subsystem(System, Line):
 
 
     def drawLine(self, Time, ax, color="k", plot_endpoints=False, 
-                 plot_shadow=True, colortension=False, cmap_tension='rainbow'):
+                 plot_shadow=True, colortension=False, cmap_tension='rainbow', label = ''):
         '''wrapper to System.plot with some transformation applied'''
         
         for i, line in enumerate(self.lineList):
-            
+            if isinstance(label,list) and len(label)==len(self.lineList):
+                lab = label[i]
+            else:
+                lab = label
             # color and width settings
             if color == 'self':
                 line.color = line.color  # attempt to allow custom colors
@@ -624,7 +627,7 @@ class Subsystem(System, Line):
                     ax.plot(Xs[i:i+2], Ys[i:i+2], Zs[i:i+2], color=rgba, zorder=100)
             else:
                 #linebit.append(ax.plot(Xs, Ys, Zs, color=color, lw=lw, zorder=100))
-                ax.plot(Xs, Ys, Zs, color=line.color, lw=line.lw, zorder=100)
+                ax.plot(Xs, Ys, Zs, color=line.color, lw=line.lw, zorder=100, label = lab)
             
             if plot_shadow:
                 if self.seabedMod == 0:
