@@ -3466,7 +3466,7 @@ class System():
                             print('Line does not have an MBL')
                             return
                 else:
-                    if 'MBL' in linesec.type:
+                    if 'MBL' in line.type:
                         ratios.append(max(line.TA, line.TB)/line.type['MBL'])
                     else:
                         print('Line does not have an MBL')
