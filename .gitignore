@@ -168,3 +168,6 @@ cython_debug/
 
 # Mac generated file
 .DS_Store
+
+# VS Code
+.vscode/

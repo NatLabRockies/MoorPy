@@ -149,7 +149,6 @@ class Subsystem(System, Line):
         node points corresponding to wherever the subsystem cross over an edge
         of the bathymetry grid.
         '''
-        
         dx = self.rB[0] - self.rA[0]
         dy = self.rB[1] - self.rA[1]
         
@@ -159,6 +158,11 @@ class Subsystem(System, Line):
             
             xs_loc = []  # local x value along subsystem from end A
             depths = []
+            
+            # get rA depth
+            depth, _ = self.sys.getDepthFromBathymetry(self.rA[0],self.rA[1])
+            xs_loc.append(-self.span)
+            depths.append(depth)
             
             # Find all places where the subsystem crosses the bathGrid_Xs
             if abs(dx) > 0:
@@ -170,7 +174,7 @@ class Subsystem(System, Line):
                         
                         depth, _ = self.sys.getDepthFromBathymetry(x, y) # depth
                         
-                        xs_loc.append( (x - self.rA[0])*LH/dx )  # hotizontal length along sybsystem
+                        xs_loc.append(-(self.span - (x - self.rA[0])*self.span/dx ))  # hotizontal length along sybsystem
                         depths.append(depth)
         
         
@@ -180,16 +184,22 @@ class Subsystem(System, Line):
                     # Check if x is between rA and rB:
                     if (self.rA[1] < y and y < self.rB[1]) or (self.rA[1] > y and y > self.rB[1]):
                         
-                        x = self.rA[1] + (y - self.rA[1])*dx/dy  # corresponding y value
+                        x = self.rA[0] + (y - self.rA[1])*dx/dy  # corresponding y value
                         
                         depth, _ = self.sys.getDepthFromBathymetry(x, y) # depth
                         
-                        xs_loc.append( (y - self.rA[1])*LH/dy )  # hotizontal length along sybsystem
+                        xs_loc.append(-(self.span - (y - self.rA[1])*self.span/dy ))  # hotizontal length along sybsystem
                         depths.append(depth)
+        
+                
+            # get rB depth
+            depth, _ = self.sys.getDepthFromBathymetry(self.rB[0],self.rB[1])
+            xs_loc.append(0)
+            depths.append(depth)
         
             # Sort xs_loc and depths by increasing xs_loc values
             xs_loc = np.array(xs_loc)
-            depths = np.array(depths)
+            depths = np.array(depths, dtype=np.float64)
             idx = np.argsort(xs_loc)
             xs_loc_sorted = xs_loc[idx]
             depths_sorted = depths[idx]
@@ -199,6 +209,7 @@ class Subsystem(System, Line):
             self.bathGrid_Xs = np.array(xs_loc_sorted)
             self.bathGrid_Ys = np.array([0])
             self.bathGrid    = np.array([depths_sorted])
+            self.seabedMod = 2 # update seabed mod since there is bathymetry!
             
         else:
             pass  # MH: can't think of anything to do for isolated subsystems at the moment...
@@ -352,10 +363,10 @@ class Subsystem(System, Line):
             if self.sys:  # If there is a parent system, query it's seabed info
                 z, _ = self.sys.getDepthFromBathymetry(r[0], r[1])
             else:
-                z = -self.depth  # Otherwise use the subsystem's depth parameter
+                z = self.depth  # Otherwise use the subsystem's depth parameter
             
             r = np.array([r[0], r[1], -z])  # (making a copy of r to not overwrite it)
-        
+
         # set end coordinates in global frame just like for a Line
         if endB == 1:
             self.rB = np.array(r, dtype=float)
@@ -375,7 +386,7 @@ class Subsystem(System, Line):
         equilibrium happens in the local 2D plane. Values in this local 
         frame are also saved. 
         '''
-        
+
         if tol==0:
             tol=self.eqtol
         
@@ -467,8 +478,49 @@ class Subsystem(System, Line):
             plt.show()    
     
     
-    def drawLine2d(self, Time, ax, color="k", endpoints=False, Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, colortension=False, plotnodes=[], plotnodesline=[],label="",cmap='rainbow', alpha=1.0, linewidth = 1):
-        '''wrapper to System.plot2d with some transformation applied'''
+    def drawLine2d(self, Time, ax, color="k", plot_endpoints=False, 
+                   Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, 
+                   colortension=False, line_depth_settings=None, 
+                   plotnodes=[], plotnodesline=[],label="",cmap='rainbow', 
+                   alpha=1.0, linewidth = 1):
+        '''wrapper to System.plot2d with some transformation applied
+        
+        Parameters
+        ----------
+        Time : float
+            The current time for which the line is being drawn.
+        ax : matplotlib.axes.Axes
+            The axes on which to plot the line.
+        color : str, optional
+            The color of the line. Default is "k" (black).
+        plot_endpoints : bool, optional
+            Whether to plot the endpoints of the line. Default is False.
+        Xuvec : list, optional
+            The x-direction vector for 3D to 2D transformation. Default is [1, 0, 0].
+        Yuvec : list, optional
+            The y-direction vector for 3D to 2D transformation. Default is [0, 0, 1].
+        Xoff : float, optional
+            Offset in the x-direction. Default is 0.
+        Yoff : float, optional
+            Offset in the y-direction. Default is 0.
+        colortension : bool, optional
+            Whether to color the line based on node tensions. Default is False.
+        line_depth_settings : dict, optional
+            Settings for depth colormap, including 'cmap', 'vmin', 'vmax', 'and only_shared'.
+            only_shared is a bool that indicates if depth coloring should only be applied to shared lines.
+        plotnodes : list, optional
+            List of nodes to plot on the line.
+        plotnodesline : list, optional
+            List of line numbers corresponding to the nodes to plot.
+        label : str or list, optional
+            Label(s) for the line in the plot legend.
+        cmap : str, optional
+            Colormap to use for tension coloring. Default is 'rainbow'.
+        alpha : float, optional
+            Transparency level of the line. Default is 1.0.
+        linewidth : float, optional
+            Width of the line. Default is 1.
+        '''
         
         for i, line in enumerate(self.lineList):
             if isinstance(label,list) and len(label)==len(self.lineList):
@@ -497,8 +549,29 @@ class Subsystem(System, Line):
             Xs2d = Xs*Xuvec[0] + Ys*Xuvec[1] + Zs*Xuvec[2] + Xoff
             Ys2d = Xs*Yuvec[0] + Ys*Yuvec[1] + Zs*Yuvec[2] + Yoff
             
-            
-            if colortension:    # if the mooring lines want to be plotted with colors based on node tensions
+            if line_depth_settings is not None: 
+                import matplotlib.cm as cm
+                import matplotlib.colors as mcolors
+                cmap_obj = cm.get_cmap(line_depth_settings.get("cmap", "Blues"))
+                norm = mcolors.Normalize(
+                    vmin=line_depth_settings.get("vmin", 0),
+                    vmax=line_depth_settings.get("vmax", 1)
+                )
+                only_shared = line_depth_settings.get("only_shared", False)          
+                linewidth_multiplier = line_depth_settings.get("linewidth_multiplier", 2)  # to make depth lines more visible 
+                for j in range(len(Xs2d)-1):
+                    avg_depth = (Zs[j] + Zs[j+1]) / 2
+                    rgba = cmap_obj(norm(avg_depth))  
+                    if only_shared:
+                        if abs(self.rA[-1]) < self.depth:
+                            ax.plot(Xs2d[j:j+2], Ys2d[j:j+2], color=rgba,
+                                    lw=linewidth*linewidth_multiplier, alpha=alpha, zorder=2 if abs(self.rA[-1]) < self.depth else 1)  # multiplying linewidth by 6 to make depth lines more visible | also, once we agree on an attribute name for the shared line, change the condition of `abs(self.rA[-1]) < self.depth` ->>> `self.shared`
+                    else:
+                        ax.plot(Xs2d[j:j+2], Ys2d[j:j+2], color=rgba,
+                            lw=linewidth*linewidth_multiplier, alpha=alpha, zorder=2 if abs(self.rA[-1]) < self.depth else 1)
+
+                    
+            elif colortension:    # if the mooring lines want to be plotted with colors based on node tensions
                 maxT = np.max(tensions); minT = np.min(tensions)
                 for i in range(len(Xs)-1):          # for each node in the line
                     color_ratio = ((tensions[i] + tensions[i+1])/2 - minT)/(maxT - minT)  # ratio of the node tension in relation to the max and min tension
@@ -513,15 +586,19 @@ class Subsystem(System, Line):
                     if self.number==plotnodesline[i]:
                         ax.plot(Xs2d[node], Ys2d[node], 'o', color=colorplot, markersize=5)
             
-            if endpoints == True:
+            if plot_endpoints == True:
                 ax.scatter([Xs2d[0], Xs2d[-1]], [Ys2d[0], Ys2d[-1]], color = colorplot)
 
 
-    def drawLine(self, Time, ax, color="k", endpoints=False, shadow=True, colortension=False, cmap_tension='rainbow'):
+    def drawLine(self, Time, ax, color="k", plot_endpoints=False, 
+                 plot_shadow=True, colortension=False, cmap_tension='rainbow', label = ''):
         '''wrapper to System.plot with some transformation applied'''
         
         for i, line in enumerate(self.lineList):
-            
+            if isinstance(label,list) and len(label)==len(self.lineList):
+                lab = label[i]
+            else:
+                lab = label
             # color and width settings
             if color == 'self':
                 line.color = line.color  # attempt to allow custom colors
@@ -550,23 +627,22 @@ class Subsystem(System, Line):
                     ax.plot(Xs[i:i+2], Ys[i:i+2], Zs[i:i+2], color=rgba, zorder=100)
             else:
                 #linebit.append(ax.plot(Xs, Ys, Zs, color=color, lw=lw, zorder=100))
-                ax.plot(Xs, Ys, Zs, color=line.color, lw=line.lw, zorder=100)
+                ax.plot(Xs, Ys, Zs, color=line.color, lw=line.lw, zorder=100, label = lab)
             
-            if shadow:
+            if plot_shadow:
                 if self.seabedMod == 0:
                     Zs = np.zeros_like(Xs)-self.depth
                 elif self.seabedMod == 1:
-                    Zs = self.depth - self.xSlope*Xs - self.ySlope*Ys
+                    Zs = -self.depth + self.xSlope*Xs + self.ySlope*Ys
                 elif self.seabedMod == 2:
                     Zs = np.zeros(len(Xs))
                     for i in range(len(Xs)):
                         # Can get depths from the Subsystem's local grid
-                        Zs[i] = self.getDepthFromBathymetry(Xs0[i], Ys0[i])
-                        #Zs[i] = self.sys.getDepthFromBathymetry(Xs[i], Ys[i])
-
+                        Zs[i] = -self.getDepthFromBathymetry(Xs0[i], Ys0[i], normal=False)
+                
                 ax.plot(Xs, Ys, Zs, color=[0.5, 0.5, 0.5, 0.2], lw=line.lw, zorder = 1.5) # draw shadow
             
-            if endpoints == True:
+            if plot_endpoints == True:
                 #linebit.append(ax.scatter([Xs[0], Xs[-1]], [Ys[0], Ys[-1]], [Zs[0], Zs[-1]], color = color))
                 ax.scatter([Xs[0], Xs[-1]], [Ys[0], Ys[-1]], [Zs[0], Zs[-1]], color = line.color)
     
@@ -577,9 +653,8 @@ class Subsystem(System, Line):
         'span' (shouldn't change), and B is set based on offset and the
         rad_fair/z_fair setting. Optional argument z can be added for a z offset.
         '''
-        
+
         self.offset = float(offset)
-        
         # Use static EA values and unstretched lengths
         self.revertToStaticStiffness()
 
@@ -591,12 +666,12 @@ class Subsystem(System, Line):
         else:
             self.rA = np.array([-self.span-self.rad_fair, 0, self.rA[2]])
             self.rB = np.array([-self.rad_fair + offset, 0, self.z_fair+z]) 
-            
+
         if hasattr(self, 'maxIter'):
             self.staticSolve(tol=self.eqtol, maxIter = self.maxIter)  # solve the subsystem
         else:
             self.staticSolve(tol=self.eqtol)
-            
+  
         # Store some values at this offset position that may be used later
         for i, line in enumerate(self.lineList):
             self.TeM[i,0] = np.linalg.norm(line.fA)
@@ -774,6 +849,14 @@ class Subsystem(System, Line):
         
         return dynamicTe 
     
+    def getAng(self, iLine):
+        '''Compute the angle of the line.'''
+        line = self.lineList[iLine]
+        xs = line.Xs
+        zs = line.Zs
+        ang = np.degrees(np.arctan2(zs[-1]-zs[0], xs[-1]-xs[0]))
+        
+        return ang
     def getMinTen(self, iLine):
         '''Compute the end (maximum) tension for a specific line, including
         a dynamic amplification factor.'''

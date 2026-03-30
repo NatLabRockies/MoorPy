@@ -86,23 +86,23 @@ AnchorProps:
     # decomcost_m3 :     # decommissioning cost per area^3 [$/m^6]
     # decomcost    :     # baseline decommissioning cost offset [$]
 
-  drag-embedment: 
-    matcost_m    :  4.15      # material cost per mass [2024$/kg]
+  dea: 
+    matcost_m    :  5.705      # material cost per mass [$/kg] - average from Task 49 Design Basis
     # instcost     :  192986.64   # baseline installation cost offset [$] - from 163548*euros2dollars(1.18) in MoorProps.py
     # decomcost    :  270181.06   # baseline decommissioning cost offset [$] - from 228967*euros2dollars(1.18) in MoorProps.py
 
   gravity       :
     matcost_m    :  5.40e-1   # material cost per mass [2024$/kg]
 
-  suction       : # not in OMAE2025-156384 because old data
-    matcost_m    :  10.25       # material cost per mass [$/kg] - from old number in MoorProps.py
+  suction       : # not in OMAE2025-156384
+    matcost_m    :  4.435       # material cost per mass [$/kg] - average from Task 49 Design Basis 
     # instcost     :  211610.58   # baseline installation cost offset [$] - from 179331*euros2dollars(1.18) in MoorProps.py
     # decomcost    :  148127.76   # baseline decommissioning cost offset [$] - from 125532*euros2dollars(1.18) in MoorProps.py
 
-  SEPLA         :  # not in OMAE2025-156384 because only 3 data points
+  sepla         :  # not in OMAE2025-156384 because only 3 data points
     matcost_m    :  7.11      # material cost per mass [2024$/kg]
 
-  VLA           :
+  vla           :
     matcost_a    :  1.64e4      # material cost per area [2024$/m^2]
 
   driven        : # driven piles

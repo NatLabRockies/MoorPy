@@ -588,7 +588,7 @@ def getAnchorCost(fx = None, fz = None, type="drag-embedment", mass = None, area
     return anchorMatCost, anchorInstCost, anchorDecomCost, info   # [USD]
 
 
-"""
+
 def getAnchorProps(fx, fz, type="drag-embedment", display=0):
     ''' ****OLD VERSION**** Calculates anchor required capacity and cost based on specified loadings and anchor type'''
     
@@ -673,4 +673,4 @@ def getAnchorProps(fx, fz, type="drag-embedment", display=0):
     
 
     return anchorMatCost, anchorInstCost, anchorDecomCost   # [USD]
-"""
+

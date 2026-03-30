@@ -4,7 +4,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import moorpy as mp
-from moorpy.MoorProps import getLineProps
+from moorpy.helpers import getLineProps
 
 
 # ----- choose some system geometry parameters -----

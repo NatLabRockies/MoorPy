@@ -1,0 +1,11 @@
+--- MoorPy Bathymetry Input File ---
+nGridX 2
+nGridY 2
+	-750      500
+-700   200	   210
+700    210        220
+
+
+
+
+

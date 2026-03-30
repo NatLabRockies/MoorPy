@@ -53,7 +53,7 @@ class Line():
         self.type = lineType    # dictionary of a System.lineTypes entry
         self.cost = {}          # empty dictionary to contain cost information
         
-        if not self.isRod:
+        if 'EA' in self.type and not self.isRod:
             self.EA = self.type['EA']  # use the default stiffness value for now (may be modified if using nonlinear elasticity) [N]
         
         self.nNodes = int(nSegs) + 1
@@ -419,7 +419,10 @@ class Line():
         
     
     
-    def drawLine2d(self, Time, ax, color="k", Xuvec=[1,0,0], Yuvec=[0,0,1], Xoff=0, Yoff=0, colortension=False, cmap='rainbow', plotnodes=[], plotnodesline=[], label="", alpha=1.0,linewidth=1):
+    def drawLine2d(self, Time, ax, color="k", Xuvec=[1,0,0], Yuvec=[0,0,1], 
+                   Xoff=0, Yoff=0, colortension=False, cmap='rainbow', 
+                   plotnodes=[], plotnodesline=[], label="", alpha=1.0,
+                   linewidth=1):
         '''Draw the line on 2D plot (ax must be 2D)
 
         Parameters
@@ -486,7 +489,7 @@ class Line():
                     rgba = cmap_obj(color_ratio)    # return the rbga values of the colormap of where the node tension is
                     linebit.append(ax.plot(Xs2d[i:i+2], Ys2d[i:i+2], color=rgba))
             else:
-                linebit.append(ax.plot(Xs2d, Ys2d, lw=linewidth, color=color, label=label, alpha=alpha)) # previously had lw=1 (linewidth)
+                linebit.append(ax.plot(Xs2d, Ys2d, lw=linewidth, color=colorplot, label=label, alpha=alpha)) # previously had lw=1 (linewidth)
             
             if len(plotnodes) > 0:
                 for i,node in enumerate(plotnodes):
@@ -501,7 +504,8 @@ class Line():
 
     
 
-    def drawLine(self, Time, ax, color="k", endpoints=False, shadow=True, colortension=False, cmap_tension='rainbow'):
+    def drawLine(self, Time, ax, color="k", plot_endpoints=False, 
+                 plot_shadow=True, colortension=False, cmap_tension='rainbow'):
         '''Draw the line in 3D
         
         Parameters
@@ -569,20 +573,19 @@ class Line():
             else:
                 linebit.append(ax.plot(Xs, Ys, Zs, color=color, lw=lw, zorder=100))
                 
-            if shadow:
+            if plot_shadow:
                 if self.sys.seabedMod == 0:
                     Zs = np.zeros_like(Xs)-self.sys.depth
                 elif self.sys.seabedMod == 1:
-                    Zs = self.sys.depth - self.sys.xSlope*Xs - self.sys.ySlope*Ys
+                    Zs = -self.sys.depth + self.sys.xSlope*Xs + self.sys.ySlope*Ys
                 elif self.sys.seabedMod == 2:
                     Zs = np.zeros(len(Xs))
                     for i in range(len(Xs)):
-                        z,_ = self.sys.getDepthFromBathymetry(Xs[i], Ys[i])
-                        Zs[i] = -z
-
+                        Zs[i] = -self.sys.getDepthFromBathymetry(Xs[i], Ys[i], normal=False)
+                
                 ax.plot(Xs, Ys, Zs, color=[0.5, 0.5, 0.5, 0.2], lw=lw, zorder = 1.5) # draw shadow
             
-            if endpoints == True:
+            if plot_endpoints == True:
                 linebit.append(ax.scatter([Xs[0], Xs[-1]], [Ys[0], Ys[-1]], [Zs[0], Zs[-1]], color = color))
                 
                     
@@ -735,7 +738,7 @@ class Line():
 
         # deal with horizontal tension starting point
         if self.HF < 0:
-            raise LineError("Line HF cannot be negative") # this could be a ValueError too...
+            self.HF = 0 # raise LineError("Line HF cannot be negative") # this could be a ValueError too...
             
         if reset==True:   # Indicates not to use previous fairlead force values to start catenary 
             self.HF = 0   # iteration with, and insteady use the default values.
@@ -849,14 +852,15 @@ class Line():
             try:
                 (fAH, fAV, fBH, fBV, info) = catenary(LH, LV, self.L, self.EA, 
                      w_total, CB=cb, alpha=alpha, HF0=self.HF, VF0=self.VF, Tol=tol, 
-                     nNodes=self.nNodes, plots=profiles, depth=self.sys.depth)
-            
+                     nNodes=self.nNodes, plots=profiles, depth=depthA)
             except CatenaryError as error:
                 raise LineError(self.number, error.message)       
         #If EA isnt found then we will use the ten-str relationship defined in the input file 
         else:
-            (fAH, fAV, fBH, fBV, info) = nonlinear(LH, LV, self.L, self.type['Str'], self.type['Ten'],np.linalg.norm(w_total)) 
-    
+
+            (fAH, fAV, fBH, fBV, info) = nonlinear(LH, LV, self.L, self.type['Str'], self.type['Ten'],
+                                                   np.linalg.norm(w_total), nNodes=self.nNodes, plots=profiles) 
+
     
         # save line profile coordinates in global frame (involves inverse rotation)
         if profiles > 0:

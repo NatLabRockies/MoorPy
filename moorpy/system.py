@@ -9,6 +9,7 @@ from mpl_toolkits.mplot3d.art3d import Poly3DCollection
 import yaml
 import warnings
 from os import path
+from copy import deepcopy
 
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import spsolve, MatrixRankWarning
@@ -121,6 +122,13 @@ class System():
         # read in data from an input file if a filename was provided
         if len(file) > 0:
             self.load(file)
+            # check if bathymetry, if so sink anchors as needed
+            if 'bathymetry' in kwargs:
+                for pt in self.pointList:
+                    # assume point is an anchor if it's fixed and at system depth
+                    if pt.type==1 and pt.r[2]==-self.depth:
+                        z, _ = self.getDepthFromBathymetry(pt.r[0], pt.r[1])
+                        pt.r[2] = -z
         
         # set the quasi-static/dynamic toggle for the entire mooring system
         self.qs = qs
@@ -376,43 +384,6 @@ class System():
         
         self.pointList[-1].attachLine(lineID, endB)
         
-    
-    def addLineType(self, type_string, d, mass, EA, name=""):
-        '''Convenience function to add a LineType to a mooring system or adjust
-        the values of an existing line type if it has the same name/key.
-
-        Parameters
-        ----------
-        type_string : string
-            string identifier of the LineType object that is to be added.
-        d : float
-            volume-equivalent diameter [m].
-        mass : float
-            mass of line per length, or mass density [kg/m], used to calculate weight density (w) [N/m]
-        EA : float
-            extensional stiffness [N].
-
-        Returns
-        -------
-        None.
-
-        '''
-        if len(name)==0:
-            name=type_string+str(d)
-        
-        
-        w = (mass - np.pi/4*d**2 *self.rho)*self.g
-        
-        lineType = dict(name=name, d_vol=d, w=w, m=mass, EA=EA, material=type_string)   # make dictionary for this line type
-        
-        lineType['material'] = 'unspecified'  # fill this in so it's available later
-        
-        if type_string in self.lineTypes:                                # if there is already a line type with this name
-            self.lineTypes[type_string].update(lineType)                 # update the existing dictionary values rather than overwriting with a new dictionary
-        else:
-            self.lineTypes[type_string] = lineType
-
-        # <<< the "name" keyword in this method is confusing in that it isn't the index key. Does it have a purpose? <<<
 
     def captureCompositeLine(self,point_id):
         if not hasattr(self,'compositeLineList'):
@@ -420,40 +391,111 @@ class System():
         
         self.compositeLineList.append(CompositeLine(self,point_id))
 
-    def setLineType(self, dnommm, material, source=None, name="", **kwargs):
+    def setLineType(self, dnommm=None, material=None, source=None, name="0", 
+                    mass=None, d_vol=None, w=None, EA=None, lineType=None,
+                    overwrite=True, **kwargs):
         '''Add or update a System lineType using the new dictionary-based method.
 
         Parameters
         ----------
-        dnommm : float
-            nominal diameter [mm].
-        material : string
-            string identifier of the material type be used.
+        dnommm : float, optional
+            nominal diameter [mm]. Default is None
+        material : string, optional
+            string identifier of the material type be used. Default is None
         source : dict or filename (optional)
-            YAML file name or dictionary containing line property scaling coefficients. If not provided,
+            YAML file name or dictionary containing line property scaling coefficients. 
+            If not provided but dnommm and material have been provided,
             whatever has already been loaded into the MoorPy system will be used.
         name : string (optional)
-            Identifier for the line type (otherwise will be generated automatically).
+            Identifier for the line type. Default is "0"
+        mass : float, optonal
+            mass/m [kg/m] of mooring line material. Default is None. 
+            Not needed if dnommm and material or lineType provided unless mass does not follow scaling
+        d_vol : float, optional
+            volumetric diameter [m]. Default is None.
+            Not needed if dnommm and material or lineType provided unless d_vol does not follow scaling
+        w : float, optional
+            weight/m [N/m] of mooring line material. Default is None.
+            Not needed if dnommm and material or lineType provided unless w does not follow scaling
+        EA : float, optional
+            stiffness [N] of mooring line material. Default is None.
+            Not needed if dnommm and material or lineType provided unless EA does not follow scaling
+        lineType : dict, optional
+            Dictionary containing line type properties such as m, material, EA, d_nom
+            If lineType provided, none of the previous inputs are required.
+        overwrite : bool, optional
+            Controls whether or not to overwrite a lineType that has the same 
+            string identifier as the input name. Default is True. 
 
         Returns
         -------
-        None.
+        lineType
         '''
- 
-        # compute the actual values for this line type
-        if source==None:
-            lineType = getLineProps(dnommm, material, lineProps=self.lineProps, name=name, rho=self.rho, g=self.g)  
+        if lineType is None: # build out lineType dict
+            if dnommm is not None:
+                d_nom = dnommm/1000
+            
+            if dnommm is not None and material is not None:
+                # compute the actual values for this line type from MoorProps file
+                if source==None:
+                    lineType = getLineProps(dnommm, material, lineProps=self.lineProps, name=name, rho=self.rho, g=self.g)  
+                else:
+                    lineType = getLineProps(dnommm, material, source=source, name=name, rho=self.rho, g=self.g) 
+                # update any values that were explicitly defined by user
+                upd = False
+                if d_vol is not None:
+                    lineType['d_vol'] = d_vol
+                    upd = True
+                if w is not None:
+                    lineType['w'] = w
+                    upd = True
+                if mass is not None:
+                    lineType['m'] = mass
+                    upd = True
+                if EA is not None:
+                    lineType['EA'] = EA
+                    upd = True
+                
+                if upd:
+                    lineType['info'] = lineType['info']+' and altered by user inputs'
+                
+            else:
+                # create dict directly from given information
+                lineType = dict(name=name, d_vol=d_vol, w=w, m=mass, EA=EA, material=material, d_nom=d_nom)   # make dictionary for this line type
+                
+            
         else:
-            lineType = getLineProps(dnommm, material, source=source, name=name, rho=self.rho, g=self.g)  
-        
-        lineType.update(kwargs)                      # add any custom arguments provided in the call to the lineType's dictionary
-        
-        # add the dictionary to the System's lineTypes master dictionary
-        if lineType['name'] in self.lineTypes:                                # if there is already a line type with this name
-            self.lineTypes[lineType['name']].update(lineType)                 # update the existing dictionary values rather than overwriting with a new dictionary
-        else:
-            self.lineTypes[lineType['name']] = lineType                       # otherwise save a new entry
+            # check if important keys exist, if not add them with None value
+            lineType['w'] = lineType.get('w')
+            lineType['m'] = lineType.get('m')
+            lineType['d_vol'] = lineType.get('d_vol')
+            lineType['material'] = lineType.get('material')
+            
+            
+        # calculate some things if they don't exist yet
+        if lineType['w'] is None and (lineType['m'] is not None and lineType['d_vol'] is not None):
+            lineType['w'] = (lineType['m'] - np.pi/4*lineType['d_vol']**2 *self.rho)*self.g
+        elif lineType['d_vol'] is None and (lineType['m'] is not None and lineType['w'] is not None):
+            lineType['d_vol'] = np.sqrt(4/(self.rho*np.pi)*(lineType['m'] - lineType['w']/self.g))
 
+        # update the line type with any kwargs
+        lineType.update(kwargs)  # add any custom arguments provided in the call to the lineType's dictionary
+        
+        if name in self.lineTypes and overwrite==True:                                # if there is already a line type with this name
+            self.lineTypes[name].update(lineType)                 # update the existing dictionary values rather than overwriting with a new dictionary
+        elif name in self.lineTypes and overwrite==False:         # if instructed not to overwrite linetpyes of the same name
+            if self.lineTypes[name] != lineType:                  # check if dict is the same for new and old line type
+                counter = 1 # initiate counter to adjust name
+                type_string_start = deepcopy(name)
+                while name in self.lineTypes: # keep incrementing counter and trying names until it doesn't match an existing one
+                    name = str(type_string_start)+'_'+str(counter) # try adjusted name
+                    counter += 1 # increment counter
+                self.lineTypes[name] = lineType
+        else:
+            self.lineTypes[name] = lineType
+            
+        self.lineTypes[name]['name'] = name
+    
         return lineType                              # return the dictionary in case it's useful separately
 
     def setPointType(self, design, source = None, name = "", **kwargs):
@@ -1055,7 +1097,7 @@ class System():
 
 
     def unload(self, fileName, MDversion=2, line_dL=0, rod_dL=0, flag='p', 
-               outputList=[], Lm=[0], T_half=42, phi=None, MDoptionsDict={}):
+               outputList=[], Lm=[0], T_half=42, phi=None, dynamicStiffness = False, cleanLineTypeName=False, MDoptionsDict={}):
         '''Unloads a MoorPy system into a MoorDyn-style input file
 
         Parameters
@@ -1077,8 +1119,12 @@ class System():
             half way between the static and dynamic values [s]. Default is 42.
         phi : list of floats, optional 
             platform's rotations variables [deg]. Defaults to None and platforms are not unrotated.
+        dynamicStiffness: float
+            if true, automatically activateDynamicStiffness to calculate dynamic EA
         MDoptionsDict: dictionary, optional
             MoorDyn Options. If not given, default options are considered.
+        cleanLineTypeName: bool, optional
+            If true, line type names will be renamed to "type_{counter}" to avoid long names that may cause issues in MoorDyn.
         Returns
         -------
         None.
@@ -1334,24 +1380,66 @@ class System():
             L.append("TypeName      Diam     Mass/m     EA     BA/-zeta     EI        Cd      Ca      CdAx    CaAx")
             L.append("(name)        (m)      (kg/m)     (N)    (N-s/-)    (N-m^2)     (-)     (-)     (-)     (-)")
             
-            j = 0 # count for list of Lms
+            if cleanLineTypeName:
+                # Create unique short keys for the line types
+                # build mapping from old keys → new short keys
+                key_map = {}
+                for i, key in enumerate(self.lineTypes.keys()):
+                    key_map[key] = f"type_{i+1}"
+
+                # update all line.type['name'] values using the mapping
+                for line in self.lineList:
+                    old_key = line.type['name']
+                    if old_key in key_map:
+                        line.type['name'] = key_map[old_key]
+
+                # rebuild lineTypes with the new keys
+                new_lineTypes = {}
+                for old_key, item in self.lineTypes.items():
+                    new_lineTypes[key_map[old_key]] = item
+
+                self.lineTypes = new_lineTypes
+
+            j = 0 # count for list of Lms 
             for key, lineType in self.lineTypes.items(): 
                 di = lineTypeDefaults.copy()  # start with a new dictionary of just the defaults
                 di.update(lineType)           # then copy in the lineType's existing values
+                
+
+                # check whether to compute dynamic stiffness for this linetype
                 if 'EAd' in di.keys() and di['EAd'] > 0:
-                    if Lm[0] > 0:
-                        print('Calculating dynamic stiffness with Lm = ' + str(Lm)+'* MBL')
+                    
+                    
+                    # either use provided mean loads OR use line EA if dynamicStiffness is True
+                    if Lm[0] > 0 or dynamicStiffness ==True:
+                        
                         
                         #assume list of Lms (length must equal number of lines with EAd)
                         if len(Lm) > 1:
+                            print('Calculating dynamic stiffness with Lm = ' + str(Lm[j])+'* MBL')
+                            
                             # Get dynamic stiffness including mean load dependence
                             EAd = di['EAd'] + di['EAd_Lm']*Lm[j]*di['MBL']
-                            j = j + 1
+                            j += 1
                         
                         #otherwise assume same Lm for all 
-                        else:
+                        elif Lm[0] > 0:
+                            print('Calculating dynamic stiffness with Lm = ' + str(Lm)+'* MBL')
                             # Get dynamic stiffness including mean load dependence
                             EAd = di['EAd'] + di['EAd_Lm']*Lm[0]*di['MBL']
+                        
+                        #use line EA if different from linetype EA (must have already called activateDynamicStiffness)
+                        else:
+                            self.activateDynamicStiffness()
+                            
+                            # for dynamic stiffness, determine which line has this linetype
+                            # use first instance (assumes that synethetic lines have already been duplicated!)
+                            for i, line in enumerate(self.lineList):
+                                if line.type['name'] == key:
+                                    break
+                                
+                            print('Calculating dynamic stiffness with line EA ', self.lineList[i].EA)
+                            EAd = self.lineList[i].EA
                         # This damping value is chosen for critical damping of a 10 m segment
                         c2 = 10 * np.sqrt(di['EA'] * di['m'])
                         # or use c1 = di['BA'] ?
@@ -1365,9 +1453,10 @@ class System():
 
                         c1 = (K1+K2)/(2*np.pi/T_half) * np.sqrt(((K1+frac*K2)**2 - K1**2)/((K1+K2)**2 - (K1+frac*K2)**2))
                         
-                        
                         L.append("{:<12} {:7.4f} {:8.2f}  {:7.3e}|{:7.3e} {:7.3e}|{:7.3e} {:7.3e}   {:<7.3f} {:<7.3f} {:<7.2f} {:<7.2f}".format(
                              key, di['d_vol'], di['m'], di['EA'], EAd, c1, c2, di['EI'], di['Cd'], di['Ca'], di['CdAx'], di['CaAx']))
+                    
+                        
                     else:
                         print('No mean load provided!!! using the static EA value ONLY')
                         L.append("{:<12} {:7.4f} {:8.2f}  {:7.3e} {:7.3e} {:7.3e}   {:<7.3f} {:<7.3f} {:<7.2f} {:<7.2f}".format(
@@ -1376,7 +1465,10 @@ class System():
                     L.append("{:<12} {:7.4f} {:8.2f}  {:7.3e} {:7.3e} {:7.3e}   {:<7.3f} {:<7.3f} {:<7.2f} {:<7.2f}".format(
                              key, di['d_vol'], di['m'], di['EA'], di['BA'], di['EI'], di['Cd'], di['Ca'], di['CdAx'], di['CaAx']))
             
-            
+            # revert to original line lengths if needed
+            if dynamicStiffness:
+                self.revertToStaticStiffness()
+                
             L.append("--------------------- ROD TYPES -----------------------------------------------------")
             L.append("TypeName      Diam     Mass/m    Cd     Ca      CdEnd    CaEnd")
             L.append("(name)        (m)      (kg/m)    (-)    (-)     (-)      (-)")
@@ -1637,16 +1729,25 @@ class System():
             X = np.hstack([Xrot + tVec, X[3], X[4], X[5]])
             return X
 
-        # update positions of all objects
-        for body in self.bodyList:
-            body.r6 = transform6(body.r6)
-        for point in self.pointList:
-            point.r = transform3(point.r)
+        if self.qs==1:
+            
+            # update positions of all objects
             for body in self.bodyList:
-                if point.number in body.attachedP:
-                    i = body.attachedP.index(point.number)
-                    rRel = body.rPointRel[i]                            # get relative location of point on body
-                    body.rPointRel[i] = np.matmul(rotMat, rRel*scale)   # apply rotation to relative location
+                body.r6 = transform6(body.r6)
+            for point in self.pointList:
+                point.r = transform3(point.r)
+                for body in self.bodyList:
+                    if point.number in body.attachedP:
+                        i = body.attachedP.index(point.number)
+                        rRel = body.rPointRel[i]                            # get relative location of point on body
+                        body.rPointRel[i] = np.matmul(rotMat, rRel*scale)   # apply rotation to relative location
+        
+        elif self.qs==0:
+
+            for line in self.lineList:
+                for it in range(len(line.xp)):
+                    for node in range(len(line.xp[0])):
+                        line.xp[it,node], line.yp[it,node], line.zp[it,node] = transform3([line.xp[it,node], line.yp[it,node], line.zp[it,node]])
     
     
     def getPositions(self, DOFtype="free", dXvals=[]):
@@ -3365,7 +3466,7 @@ class System():
                             print('Line does not have an MBL')
                             return
                 else:
-                    if 'MBL' in linesec.type:
+                    if 'MBL' in line.type:
                         ratios.append(max(line.TA, line.TB)/line.type['MBL'])
                     else:
                         print('Line does not have an MBL')
@@ -3440,7 +3541,7 @@ class System():
                 line.seabedMod = 2  # Ensure the Subsystem knows there's bathymetry
     
     
-    def getDepthFromBathymetry(self, x, y):   #BathymetryGrid, BathGrid_Xs, BathGrid_Ys, LineX, LineY, depth, nvec)
+    def getDepthFromBathymetry(self, x, y, normal=True):   #BathymetryGrid, BathGrid_Xs, BathGrid_Ys, LineX, LineY, depth, nvec)
         ''' interpolates local seabed depth and normal vector
         
         Parameters
@@ -3454,6 +3555,8 @@ class System():
             local seabed depth (positive down) [m]
         nvec : array of size 3
             local seabed surface normal vector (positive out) 
+        normal : bool
+            Whether to also return the normal vector (default True).
         '''
         
         # if no bathymetry info stored, just return uniform depth
@@ -3495,7 +3598,11 @@ class System():
             c0y    = c00 *(1.0-fy) + c01 *fy
             c1y    = c10 *(1.0-fy) + c11 *fy
             depth  = cx0 *(1.0-fy) + cx1 *fy
-
+            
+            # If the normal vector isn't requested, stop here and return depth
+            if not normal:
+                return depth
+            
             # get local slope
             dx = self.bathGrid_Xs[ix1] - self.bathGrid_Xs[ix0]
             dy = self.bathGrid_Ys[iy1] - self.bathGrid_Ys[iy0]
@@ -3543,17 +3650,17 @@ class System():
             Plot on an existing set of axes
         color : string, optional
             Some way to control the color of the plot ... TBD <<<
-        hidebox : bool, optional
-            If true, hides the axes and box so just the plotted lines are visible.
+        plot_box : bool, optional
+            If false, hides the axes and box so just the plotted lines are visible.
         rbound : float, optional
             A bound to be placed on each axis of the plot. If 0, the bounds will be the max values on each axis. The default is 0.
         title : string, optional
             A title of the plot. The default is "".
-        linelabels : bool, optional
+        plot_linelabels : bool, optional
             Adds line numbers to plot in text. Default is False.
-        pointlabels: bool, optional
+        plot_pointlabels: bool, optional
             Adds point numbers to plot in text. Default is False.
-        endpoints: bool, optional
+        plot_endpoints: bool, optional
             Adds visible end points to lines. Default is False.
             
         Returns
@@ -3568,28 +3675,28 @@ class System():
         # kwargs that can be used for plot or plot2d
         title           = kwargs.get('title'          , ""        )     # optional title for the plot
         time            = kwargs.get("time"           , 0         )     # the time in seconds of when you want to plot
-        linelabels      = kwargs.get('linelabels'     , False     )     # toggle to include line number labels in the plot
-        pointlabels     = kwargs.get('pointlabels'    , False     )     # toggle to include point number labels in the plot
-        draw_body       = kwargs.get("draw_body"      , True      )     # toggle to draw the Bodies or not
-        draw_clumps     = kwargs.get('draw_clumps'    , False     )     # toggle to draw clump weights and float of the mooring system
-        draw_anchors    = kwargs.get('draw_anchors'   , False     )     # toggle to draw the anchors of the mooring system or not  
-        draw_seabed     = kwargs.get('draw_seabed'    , True      )     # toggle to draw the seabed bathymetry or not
+        plot_linelabels      = kwargs.get('plot_linelabels'     , False     )     # toggle to include line number labels in the plot
+        plot_pointlabels     = kwargs.get('plot_pointlabels'    , False     )     # toggle to include point number labels in the plot
+        plot_body       = kwargs.get("plot_body"      , True      )     # toggle to draw the Bodies or not
+        plot_clumps     = kwargs.get('plot_clumps'    , False     )     # toggle to draw clump weights and float of the mooring system
+        plot_anchors    = kwargs.get('plot_anchors'   , False     )     # toggle to draw the anchors of the mooring system or not  
+        plot_seabed     = kwargs.get('plot_seabed'    , True      )     # toggle to draw the seabed bathymetry or not
         args_bath       = kwargs.get("args_bath"      , {}        )     # dictionary of optional plot_surface arguments
         '''
         cmap_bath       = kwargs.get("cmap"           , 'ocean'   )     # matplotlib colormap specification
         alpha           = kwargs.get("opacity"        , 1.0       )     # the transparency of the bathymetry plot_surface
         '''
         rang            = kwargs.get('rang'           , 'hold'    )     # colorbar range: if range not used, set it as a placeholder, it will get adjusted later
-        cbar_bath       = kwargs.get('cbar_bath'      , False     )     # toggle to include a colorbar for a plot or not
+        plot_cbar_bath       = kwargs.get('plot_cbar_bath'      , False     )     # toggle to include a colorbar for a plot or not
         colortension    = kwargs.get("colortension"   , False     )     # toggle to draw the mooring lines in colors based on node tensions
         cmap_tension    = kwargs.get('cmap_tension'   , 'rainbow' )     # the type of color spectrum desired for colortensions
-        cbar_tension    = kwargs.get('cbar_tension'   , False     )     # toggle to include a colorbar of the tensions when colortension=True
+        plot_cbar_tension    = kwargs.get('plot_cbar_tension'   , False     )     # toggle to include a colorbar of the tensions when colortension=True
         figsize         = kwargs.get('figsize'        , (6,4)     )     # the dimensions of the figure to be plotted
         # kwargs that are currently only used in plot
-        hidebox         = kwargs.get('hidebox'        , False     )     # toggles whether to show the axes or not
-        endpoints       = kwargs.get('endpoints'      , False     )     # toggle to include the line end points in the plot
-        waterplane      = kwargs.get("waterplane"     , False     )     # option to plot water surface
-        shadow          = kwargs.get("shadow"         , True      )     # toggle to draw the mooring line shadows or not
+        plot_box         = kwargs.get('plot_box'        , True     )     # toggles whether to show the axes or not
+        plot_endpoints       = kwargs.get('plot_endpoints'      , False     )     # toggle to include the line end points in the plot
+        plot_waterplane      = kwargs.get("plot_waterplane"     , False     )     # option to plot water surface
+        plot_shadow          = kwargs.get("plot_shadow"         , True      )     # toggle to draw the mooring line shadows or not
         cbar_bath_size  = kwargs.get('colorbar_size'  , 1.0       )     # the scale of the colorbar. Not the same as aspect. Aspect adjusts proportions
         # bound kwargs
         xbounds         = kwargs.get('xbounds'        , None      )     # the bounds of the x-axis. The midpoint of these bounds determines the origin point of orientation of the plot
@@ -3656,7 +3763,7 @@ class System():
             #ax.autoscale(enable=False, axis='x')
         
         # draw things
-        if draw_body:
+        if plot_body:
             for body in self.bodyList:
                 body.draw(ax)
         
@@ -3667,11 +3774,11 @@ class System():
                 #if self.qs==0 and len(rod.Tdata) == 0:
                 #    pass
                 if isinstance(rod, Line) and rod.show:
-                    rod.drawLine(time, ax, color=color, shadow=shadow)
+                    rod.drawLine(time, ax, color=color, plot_shadow=plot_shadow)
                 #if isinstance(rod, Point):  # zero-length special case
                 #    not plotting points for now
         
-        if draw_clumps:
+        if plot_clumps:
             for point in self.pointList:
                 markersize = np.max([point.m, point.v*self.rho])**0.4094 * 0.065
                 if point.v*self.rho > point.m:   # if it has positive buoyancy
@@ -3681,7 +3788,7 @@ class System():
                     #ax.plot([point.r[0]],[point.r[1]],[point.r[2]], markerfacecolor='r', markeredgecolor='k', marker='o', markersize=5)
                     ax.plot([point.r[0]],[point.r[1]],[point.r[2]], color='k', marker='o', markersize=markersize)
                     
-        if draw_anchors:
+        if plot_anchors:
             for line in self.lineList:
                 if line.zp[0,0]==-self.depth:
                     itime = int(time/line.dt)
@@ -3700,27 +3807,27 @@ class System():
                 j = j + 1
                 if color==None and 'material' in line.type:
                     if 'chain' in line.type['material']:
-                        line.drawLine(time, ax, color=[.1, 0, 0], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[.1, 0, 0], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'rope' in line.type['material'] or 'polyester' in line.type['material']:
-                        line.drawLine(time, ax, color=[.3,.5,.5], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[.3,.5,.5], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'nylon' in line.type['material']:
-                        line.drawLine(time, ax, color=[.8,.8,.2], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[.8,.8,.2], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'buoy' in line.type['material']:
-                        line.drawLine(time, ax, color=[.6,.6,.0], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[.6,.6,.0], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'hmpe' in line.type['material']:
-                        line.drawLine(time, ax, color='tab:green', endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color='tab:green', plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     elif 'cable' in line.type['material']:
-                        line.drawLine(time, ax, color='y', endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color='y', plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                     else:
-                        line.drawLine(time, ax, color=[0.5,0.5,0.5], endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                        line.drawLine(time, ax, color=[0.5,0.5,0.5], plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                 else:
-                    line.drawLine(time, ax, color=color, endpoints=endpoints, shadow=shadow, colortension=colortension, cmap_tension=cmap_tension)
+                    line.drawLine(time, ax, color=color, plot_endpoints=plot_endpoints, plot_shadow=plot_shadow, colortension=colortension, cmap_tension=cmap_tension)
                 
                 # Add line labels 
-                if linelabels == True:
+                if plot_linelabels == True:
                     ax.text((line.rA[0]+line.rB[0])/2, (line.rA[1]+line.rB[1])/2, (line.rA[2]+line.rB[2])/2, j)
             
-        if cbar_tension:
+        if plot_cbar_tension:
             maxten = max([max(line.Ts) for line in self.lineList])   # find the max tension in the System
             minten = min([min(line.Ts) for line in self.lineList])   # find the min tension in the System
             bounds = range(int(minten),int(maxten), int((maxten-minten)/256)) 
@@ -3733,10 +3840,10 @@ class System():
         for point in self.pointList:
             points = []
             i = i + 1
-            if pointlabels == True:
+            if plot_pointlabels == True:
                 ax.text(point.r[0], point.r[1], point.r[2], i, c = 'r')
             '''  MH: This needs to be way more generalized/versatile if it's going to be included!
-            if draw_seabed:     # if bathymetry is true, then make squares at each anchor point
+            if plot_seabed:     # if bathymetry is true, then make squares at each anchor point
                 if point.attachedEndB[0] == 0 and point.r[2] < -400:
                     points.append([point.r[0]+250, point.r[1]+250, point.r[2]])
                     points.append([point.r[0]+250, point.r[1]-250, point.r[2]])
@@ -3749,7 +3856,7 @@ class System():
             '''
         
         # draw the seabed if requested (only works for full bathymetries so far)
-        if draw_seabed and self.seabedMod == 2:
+        if plot_seabed and self.seabedMod == 2:
 
             if rang=='hold':
                 rang = (np.min(-self.bathGrid), np.max(-self.bathGrid))
@@ -3761,11 +3868,13 @@ class System():
             
             if cbar_bath_size!=1.0:    # make sure the colorbar is turned on just in case it isn't when the other colorbar inputs are used
                 cbar_bath=True
+            else:
+                cbar_bath = False
             if cbar_bath:
                 fig.colorbar(bath, shrink=cbar_bath_size, label='depth (m)')
         
         # draw water surface if requested
-        if waterplane:
+        if plot_waterplane:
             waterXs = np.array([min(xs), max(xs)])
             waterYs = np.array([min(ys), max(ys)])
             waterX, waterY = np.meshgrid(waterXs, waterYs)
@@ -3777,7 +3886,7 @@ class System():
         
         ax.set_zticks([-self.depth, 0])  # set z ticks to just 0 and seabed
         
-        if hidebox:
+        if not plot_box:
             ax.axis('off')
         
         return fig, ax  # return the figure and axis object in case it will be used later to update the plot
@@ -3812,18 +3921,18 @@ class System():
         # kwargs that can be used for plot or plot2d
         title            = kwargs.get('title'           , ""        )   # optional title for the plot
         time             = kwargs.get("time"            , 0         )   # the time in seconds of when you want to plot
-        linelabels       = kwargs.get('linelabels'      , False     )   # toggle to include line number labels in the plot
-        pointlabels      = kwargs.get('pointlabels'     , False     )   # toggle to include point number labels in the plot
-        draw_body        = kwargs.get("draw_body"       , False     )   # toggle to draw the Bodies or not
-        draw_anchors     = kwargs.get('draw_anchors'    , False     )   # toggle to draw the anchors of the mooring system or not   
-        draw_seabed      = kwargs.get('draw_seabed'     , True      )   # toggle to draw the seabed bathymetry or not
+        plot_linelabels       = kwargs.get('plot_linelabels'      , False     )   # toggle to include line number labels in the plot
+        plot_pointlabels      = kwargs.get('plot_pointlabels'     , False     )   # toggle to include point number labels in the plot
+        plot_body        = kwargs.get("plot_body"       , False     )   # toggle to draw the Bodies or not
+        plot_anchors     = kwargs.get('plot_anchors'    , False     )   # toggle to draw the anchors of the mooring system or not   
+        plot_seabed      = kwargs.get('plot_seabed'     , True      )   # toggle to draw the seabed bathymetry or not
         cmap_bath        = kwargs.get("cmap_bath"       , 'ocean'   )   # matplotlib colormap specification
         alpha            = kwargs.get("opacity"         , 1.0       )   # the transparency of the bathymetry plot_surface
         rang             = kwargs.get('rang'            , 'hold'    )   # colorbar range: if range not used, set it as a placeholder, it will get adjusted later
         cbar_bath        = kwargs.get('colorbar'        , False     )   # toggle to include a colorbar for a plot or not
         colortension     = kwargs.get("colortension"    , False     )   # toggle to draw the mooring lines in colors based on node tensions
         cmap_tension     = kwargs.get('cmap_tension'    , 'rainbow' )   # the type of color spectrum desired for colortensions
-        cbar_tension     = kwargs.get('cbar_tension'    , False     )   # toggle to include a colorbar of the tensions when colortension=True
+        plot_cbar_tension     = kwargs.get('plot_cbar_tension'    , False     )   # toggle to include a colorbar of the tensions when colortension=True
         figsize          = kwargs.get('figsize'         , (6,4)     )   # the dimensions of the figure to be plotted
         # kwargs that are currently only used in plot2d
         levels           = kwargs.get("levels"          , 7         )   # the number (or array) of levels in the contour plot
@@ -3832,7 +3941,7 @@ class System():
         plotnodes        = kwargs.get('plotnodes'       , []        )   # the list of node numbers that are desired to be plotted
         plotnodesline    = kwargs.get('plotnodesline'   , []        )   # the list of line numbers that match up with the desired node to be plotted
         label            = kwargs.get('label'           , ""        )   # the label/marker name of a line in the System
-        draw_fairlead    = kwargs.get('draw_fairlead'   , False     )   # toggle to draw large points for the fairleads
+        plot_fairlead    = kwargs.get('plot_fairlead'   , False     )   # toggle to draw large points for the fairleads
         line_width       = kwargs.get('linewidth'       , 1         )   # toggle to set the mooring line width in "drawLine2d
         marker           = kwargs.get('marker'          , 'o'       )   # the symbol used to represent points with a nonzero mass or volume
         
@@ -3844,7 +3953,7 @@ class System():
         else:
             fig = ax.get_figure()
         
-        if draw_body:
+        if plot_body:
             for body in self.bodyList:
                 #body.draw(ax)
                 r = body.r6[0:3]
@@ -3856,7 +3965,7 @@ class System():
             if isinstance(rod, Line):
                 rod.drawLine2d(time, ax, color=color, Xuvec=Xuvec, Yuvec=Yuvec)
             
-        if draw_fairlead:
+        if plot_fairlead:
             for line in self.lineList:
                 if line.number==1:
                     itime = int(time/line.dt)
@@ -3870,7 +3979,7 @@ class System():
                     plt.plot(x, y, 'o', color=c, markersize=5)
                 
                 
-        if draw_anchors:
+        if plot_anchors:
             for line in self.lineList:
                 if line.zp[0,0]==-self.depth:
                     itime = int(time/line.dt)
@@ -3915,12 +4024,12 @@ class System():
                 line.drawLine2d(time, ax, color=color, Xuvec=Xuvec, Yuvec=Yuvec, colortension=colortension, cmap=cmap_tension, plotnodes=plotnodes, plotnodesline=plotnodesline, label=label, alpha=alpha, linewidth=line_width)
 
             # Add Line labels
-            if linelabels == True:
+            if plot_linelabels == True:
                 xloc = np.dot([(line.rA[0]+line.rB[0])/2, (line.rA[1]+line.rB[1])/2, (line.rA[2]+line.rB[2])/2],Xuvec)
                 yloc = np.dot([(line.rA[0]+line.rB[0])/2, (line.rA[1]+line.rB[1])/2, (line.rA[2]+line.rB[2])/2],Yuvec)
                 ax.text(xloc,yloc,j)
         
-        if cbar_tension:
+        if plot_cbar_tension:
             maxten = max([max(line.Ts) for line in self.lineList])   # find the max tension in the System
             minten = min([min(line.Ts) for line in self.lineList])   # find the min tension in the System
             bounds = range(int(minten),int(maxten), int((maxten-minten)/256)) 
@@ -3932,13 +4041,13 @@ class System():
         i = 0 
         for point in self.pointList:
             i = i + 1
-            if pointlabels == True:
+            if plot_pointlabels == True:
                 xloc = np.dot([point.r[0], point.r[1], point.r[2]], Xuvec)
                 yloc = np.dot([point.r[0], point.r[1], point.r[2]], Yuvec)
                 ax.text(xloc, yloc, i, c = 'r')
         
         # draw the seabed if requested (only works for full bathymetries so far)
-        if draw_seabed and self.seabedMod == 2:
+        if plot_seabed and self.seabedMod == 2:
             
             X, Y = np.meshgrid(self.bathGrid_Xs, self.bathGrid_Ys)
             Z = -self.bathGrid
@@ -4080,7 +4189,8 @@ class System():
         return 
     
     
-    def animateLines(self, figure=None, axis=None, color=None, interval=200, repeat=True, delay=0, runtime=-1, **kwargs):
+    def animateLines(self, figure=None, axis=None, color=None, interval=200, 
+                     repeat=True, delay=0, runtime=-1, **kwargs):
         '''
         Parameters
         ----------
@@ -4104,21 +4214,21 @@ class System():
             Needs to be stored, returned, and referenced in a variable
         '''
         
-        bathymetry       = kwargs.get('bathymetry'     , False     )     # toggles whether to show the axes or not
+        plot_bathymetry       = kwargs.get('plot_bathymetry'     , False     )     # toggles whether to show the axes or not
         opacity          = kwargs.get('opacity'        , 1.0       )     # the transparency of the bathymetry plot_surface
-        hidebox          = kwargs.get('hidebox'        , False     )     # toggles whether to show the axes or not
+        plot_box          = kwargs.get('plot_box'        , True     )     # toggles whether to show the axes or not
         rang             = kwargs.get('rang'           , 'hold'    )     # colorbar range: if range not used, set it as a placeholder, it will get adjusted later
         speed            = kwargs.get('speed'          , 10        )     # the resolution of the animation; how fluid/speedy the animation is
         colortension     = kwargs.get("colortension"   , False     )     # toggle to draw the mooring lines in colors based on node tensions
         cmap_tension     = kwargs.get('cmap_tension'   , 'rainbow' )     # the type of color spectrum desired for colortensions
-        draw_body        = kwargs.get('draw_body'      , True      )
+        plot_body        = kwargs.get('plot_body'      , True      )
         # bound kwargs
         xbounds          = kwargs.get('xbounds'        , None      )     # the bounds of the x-axis. The midpoint of these bounds determines the origin point of orientation of the plot
         ybounds          = kwargs.get('ybounds'        , None      )     # the bounds of the y-axis. The midpoint of these bounds determines the origin point of orientation of the plot
         zbounds          = kwargs.get('zbounds'        , None      )     # the bounds of the z-axis. The midpoint of these bounds determines the origin point of orientation of the plot
 
         
-        # not adding cbar_tension colorbar yet since the tension magnitudes might change in the animation and the colorbar won't reflect that
+        # not adding plot_cbar_tension colorbar yet since the tension magnitudes might change in the animation and the colorbar won't reflect that
         # can use any other kwargs that go into self.plot()
         
         if self.qs==1:
@@ -4126,8 +4236,17 @@ class System():
             
 
         # create the figure and axes to draw the animation
-        fig, ax = self.plot(ax=axis, color=color, draw_body=draw_body, bathymetry=bathymetry, opacity=opacity, hidebox=hidebox, rang=rang, 
-                            colortension=colortension, xbounds=xbounds, ybounds=ybounds, zbounds=zbounds)
+        fig, ax = self.plot(ax=axis, 
+                            color=color, 
+                            plot_body=plot_body, 
+                            plot_bathymetry=plot_bathymetry, 
+                            opacity=opacity, 
+                            plot_box=plot_box, 
+                            rang=rang, 
+                            colortension=colortension, 
+                            xbounds=xbounds, 
+                            ybounds=ybounds, 
+                            zbounds=zbounds)
         '''
         # can do this section instead of self.plot(). They do the same thing
         fig = plt.figure(figsize=(20/2.54,12/2.54))

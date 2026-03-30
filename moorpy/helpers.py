@@ -668,29 +668,21 @@ def getLineProps(dnommm, material, lineProps=None, source=None, name="", rho=102
     if not material in lineProps:
         raise ValueError(f'Specified mooring line material, {material}, is not in the database.')
     
+    # Shorthand for the sub-dictionary of properties for the material in question  
+    mat = lineProps[material]       
+    
+    # Check valid diameter ranges
+    if mat['d_max'] >= 0 and d > mat['d_max']: # if a max value is given and the diameter is greater than the max
+        raise Exception(f"Input diameter {d} m is greater than the max valid value of {mat['d_max']} m for {material}.")
+    if mat['d_min'] >= 0 and d < mat['d_min']: # if a min value is given and the diameter is less than the min
+        raise Exception(f"Input diameter {d} m is less than the min valid value of {mat['d_min']} m for {material}.")
+        
     # calculate the relevant properties for this specific line type
-    mat = lineProps[material]       # shorthand for the sub-dictionary of properties for the material in question    
     d = dnommm*0.001                # convert nominal diameter from mm to m      
     mass = mat['mass_d2']*d**2
-
-    # Checking valid diameter ranges for MBL
-    if mat['MBL_dmax'] >= 0 and mat['MBL_dmin'] >= 0: # if min and max values given and the diameter outside of the range
-        if d > mat['MBL_dmax'] or d < mat['MBL_dmin']:
-            raise Exception(f"Input diameter {d} m is outside of the valid range for the MBL curve of {mat['MBL_dmin']}-{mat['MBL_dmax']} m")
-    elif mat['MBL_dmax'] >= 0 and d > mat['MBL_dmax']: # if a max value is given and the diameter is greater than the max
-        raise Exception(f"Input diameter {d} m is greater than the max valid value for the MBL curve of {mat['MBL_dmax']} m")
-    elif mat['MBL_dmin'] >= 0 and d < mat['MBL_dmin']: # if a min value is given and the diameter is less than the min
-        raise Exception(f"Input diameter {d} m is less than the min valid value for the MBL curve of {mat['MBL_dmin']} m")
+       
     MBL  = mat[ 'MBL_0'] + mat[ 'MBL_d']*d + mat[ 'MBL_d2']*d**2 + mat[ 'MBL_d3']*d**3 
 
-    # Checking valid diameter ranges fo EA
-    if mat['EA_dmax'] >= 0 and mat['EA_dmin'] >= 0: # if min and max values given and the diameter outside of the range
-        if d > mat['EA_dmax'] or d < mat['EA_dmin']:
-            raise Exception(f"Input diameter {d} m is outside of the valid range for the EA curve of {mat['EA_dmin']}-{mat['EA_dmax']} m")
-    elif mat['EA_dmax'] >= 0 and d > mat['EA_dmax']: # if a max value is given and the diameter is greater than the max
-        raise Exception(f"Input diameter {d} m is greater than the max valid value for the EA curve of {mat['EA_dmax']} m")
-    elif mat['EA_dmin'] >= 0 and d < mat['EA_dmin']: # if a min value is given and the diameter is less than the min
-        raise Exception(f"Input diameter {d} m is less than the min valid value for the EA curve of {mat['EA_dmin']} m")
     EA   = mat[  'EA_0'] + mat[  'EA_d']*d + mat[  'EA_d2']*d**2 + mat[  'EA_d3']*d**3 + mat['EA_MBL']*MBL 
 
     cost =(mat['cost_0'] + mat['cost_d']*d + mat['cost_d2']*d**2 + mat['cost_d3']*d**3 
@@ -722,7 +714,7 @@ def getLineProps(dnommm, material, lineProps=None, source=None, name="", rho=102
     
     # stiffness values for viscoelastic approach 
     EAd = mat['EAd_MBL']*MBL     # dynamic stiffness constant: Krd alpha term x MBL [N]
-    EAd_Lm = mat['EAd_MBL_Lm']   # dynamic stiffness Lm slope: Krd beta term (to be multiplied by mean load) [-]
+    EAd_Lm = mat['EAD_LM']   # dynamic stiffness Lm slope: Krd beta term (to be multiplied by mean load) [-]
     
     # Set up a main identifier for the linetype unless one is provided
     if name=="":
@@ -773,9 +765,33 @@ def loadLineProps(source):
     elif type(source) is str:
         with open(source) as file:
             source = yaml.load(file, Loader=yaml.FullLoader)
-
     else:
         raise Exception("loadLineProps supplied with invalid source")
+
+
+    # Check if what's been passed in or loaded is already fully processed
+    
+    complete = True  # set this to false if anything in the dictionary falls short
+    
+    parameters = ['mass_d2',
+        'EA_0', 'EA_d', 'EA_d2', 'EA_d3',
+        'EA_MBL', 'EAd_MBL', 'EAd_MBL_Lm',
+        'Cd', 'Cd_ax', 'Ca', 'Ca_ax',
+        'MBL_0', 'MBL_d', 'MBL_d2', 'MBL_d3',
+        'dvol_dnom',
+        'cost_0', 'cost_d', 'cost_d2', 'cost_d3', 'cost_mass', 'cost_EA', 'cost_MBL',
+        'd_min', 'd_max']  # the required parameters
+    
+    for mat, props in source.items():
+        for par in parameters:
+            if not par in props:
+                complete = False
+                break  # if anything is missing, declare incomplete
+        if not complete:
+            break
+            
+    if complete:  # if nothing is missing, use this dictionary directly as-s
+        return source
 
     if 'lineProps' in source:
         lineProps = source['lineProps']
@@ -793,11 +809,9 @@ def loadLineProps(source):
         output[mat]['EA_d'     ] = getFromDict(props, 'EA_d'     , default=0.0)
         output[mat]['EA_d2'    ] = getFromDict(props, 'EA_d2'    , default=0.0)
         output[mat]['EA_d3'    ] = getFromDict(props, 'EA_d3'    , default=0.0)
-        output[mat]['EA_dmin'  ] = getFromDict(props, 'EA_dmin'  , default=-1.0) # -1 to disable checking
-        output[mat]['EA_dmax'  ] = getFromDict(props, 'EA_dmax'  , default=-1.0) # -1 to disable checking
         output[mat]['EA_MBL'   ] = getFromDict(props, 'EA_MBL'   , default=0.0)
         output[mat]['EAd_MBL'  ] = getFromDict(props, 'EAd_MBL'  , default=0.0)
-        output[mat]['EAd_MBL_Lm']= getFromDict(props, 'EAd_MBL_Lm',default=0.0)
+        output[mat]['EAD_LM'   ] = getFromDict(props, 'EAD_LM'   ,default=0.0)
         output[mat]['Cd'       ] = getFromDict(props, 'Cd'       , default=0.0)
         output[mat]['Cd_ax'    ] = getFromDict(props, 'Cd_ax'    , default=0.0)
         output[mat]['Ca'       ] = getFromDict(props, 'Ca'       , default=0.0)
@@ -806,10 +820,9 @@ def loadLineProps(source):
         output[mat]['MBL_d'    ] = getFromDict(props, 'MBL_d'    , default=0.0)
         output[mat]['MBL_d2'   ] = getFromDict(props, 'MBL_d2'   , default=0.0)
         output[mat]['MBL_d3'   ] = getFromDict(props, 'MBL_d3'   , default=0.0)
-        output[mat]['MBL_dmin' ] = getFromDict(props, 'MBL_dmin' , default=-1.0) # -1 to disable checking
-        output[mat]['MBL_dmax' ] = getFromDict(props, 'MBL_dmax' , default=-1.0) # -1 to disable checking
         output[mat]['dvol_dnom'] = getFromDict(props, 'dvol_dnom', default=1.0)
-
+        output[mat]['creep_rate'] = getFromDict(props, 'creep_rate', default=0.0)
+        output[mat]['corrosion_rate'] = getFromDict(props, 'corrosion_rate', default=0.0)
         # special handling if material density is provided
         if 'density' in props:
             if 'dvol_dnom' in props:
@@ -827,6 +840,8 @@ def loadLineProps(source):
         output[mat]['cost_mass'] = getFromDict(props, 'cost_mass', default=0.0)
         output[mat]['cost_EA'  ] = getFromDict(props, 'cost_EA'  , default=0.0)
         output[mat]['cost_MBL' ] = getFromDict(props, 'cost_MBL' , default=0.0)
+        output[mat]['d_min'    ] = getFromDict(props, 'd_min'    , default=-1.0) # -1 to disable checking
+        output[mat]['d_max'    ] = getFromDict(props, 'd_dmax'   , default=-1.0) # -1 to disable checking
 
     return output
 
@@ -1334,7 +1349,6 @@ def lines2ss(ms):
         multi-segmented mooring lines with subsystems.
 
     '''
-    
     i = 0 
     while True:
         subsys_line_id = []
@@ -1342,7 +1356,7 @@ def lines2ss(ms):
         line_ID_of_interest = []
         point_ID_of_interest = []
         pointi = ms.pointList[i]
-        if len(pointi.attached) > 2:
+        if len(pointi.attached) > 2 and pointi.number not in ms.groundBody.attachedP:
             raise ValueError("f point number {pointi.number} branches out.")
         # 1) define the connected lines if any
         subsys_line_id.append(pointi.attached[0])
@@ -1353,13 +1367,14 @@ def lines2ss(ms):
             for line_id in subsys_line_id:
                 for pointj in ms.pointList:
                     if line_id in pointj.attached:
-                        line_ID_of_interest.append(pointj.attached)
+                        if pointj.number not in ms.groundBody.attachedP:  # Do not consider anchors
+                            line_ID_of_interest.append(pointj.attached)
                         point_ID_of_interest.append(pointj.number)
-                        # if len(pointj.attached) > 2:  # this is the case where we end the subsystem chain if the subsystem line is branching
-                            # continue
+                            # if len(pointj.attached) > 2:  # this is the case where we end the subsystem chain if the subsystem line is branching
+                                # continue
             old_subsys_line = subsys_line_id
             old_subsys_point = subsys_point_id
-            # 3) get the unique values
+                # 3) get the unique values
             subsys_line_id = np.unique(np.concatenate(line_ID_of_interest))
             subsys_point_id = np.unique(point_ID_of_interest)
             if len(subsys_line_id) == len(old_subsys_line) and len(subsys_point_id) == len(old_subsys_point):
@@ -1416,7 +1431,7 @@ def lines2ss(ms):
         ms = lines2subsystem(lines, points, ms, span=None, case=case)
         ms.initialize()
         ms.solveEquilibrium()
-        i += 1
+        i += 1      
         if i >= len(ms.pointList):
             break
 
@@ -1531,12 +1546,48 @@ def lines2subsystem(lines,points, ms,span=None,case=0):
     # append subsystem to ms
     ms.lineList.append(ss)
     ssNum = len(ms.lineList)
+    ss.sys = ms
     # attach subystem line to the end points
     ms.pointList[points[0]].attachLine(ssNum,0) # rA
     ms.pointList[points[-1]].attachLine(ssNum,1) # rB     
         
     return(ms)
 
+def lengthAwareSegmentation(lineList, factor=1, w_cutoff = 1000):
+    '''Function to segment a set of lines based on their lengths 
+    to give appropriate segment lengths.
+
+    Parameters
+    ----------
+    lineList : list
+        List of line objects to segment
+    factor : float or list
+        Factor(s) to multiply segment # by. If a single float is provided, it is applied to all lines.
+        If a list of two floats is provided, the first is applied to lines with wet weight less than w_cutoff,
+        and the second is applied to lines with wet weight greater than w_cutoff.
+    w_cutoff : float
+        apply factor [0] if linetype wet weight is less than w_cutoff, apply factor[1] if greater than w_cutoff
+
+    Returns
+    -------
+    None
+
+    '''
+    for line in lineList:
+        line.nNodes = int(np.ceil( np.sqrt(np.maximum(1, line.L-10))/2 ) + 1)
+        if isinstance(factor, list):
+            if len(factor) != 2:
+                raise ValueError("If factor is a list, it must have two elements: [factor_for_lines_below_w_cutoff, factor_for_lines_above_w_cutoff]")
+            else:
+                if line.type['w'] < w_cutoff:
+                    line.nNodes = int(line.nNodes * factor[0])
+                else:
+                    line.nNodes = int(line.nNodes *factor[1])
+        else:
+            line.nNodes = int(line.nNodes * factor)
+        if line.nNodes == 1:
+            line.nNodes += 1  # minimum of 1 segment (two nodes)
+            
 def deleteLine(ms,ln,delpts=0):
     '''
     Deletes a line from the linelist, and updates the points to have the correct line
@@ -1619,6 +1670,10 @@ def deleteLine(ms,ln,delpts=0):
                         # reduce point.number for each point after deleted point
                         for k in range(0,len(ms.pointList)):
                             if ms.pointList[k].number > i + 1:
+                                if ms.pointList[k].number in ms.groundBody.attachedP:
+                                    idx = ms.groundBody.attachedP.index(ms.pointList[k].number)  # reduce the number in the groundBody attached points
+                                    ms.groundBody.attachedP[idx] -= 1
+
                                 ms.pointList[k].number = ms.pointList[k].number - 1
                         # lower index of any body attached points after deleted point, remove deleted point from body attached points
                         for k in range(0,len(ms.bodyList)):
@@ -1787,13 +1842,14 @@ def ss2lines(ms, nsegs=10):
     sub_idx = 0
     newly_created_lines = []
     shared_point_map = {}
+    
     # Use a stable key per original point (coordinates are fine if stable)
     def _pt_key(P):
         # round to avoid tiny float diffs; include type to be safer
         return (round(P.r[0], 6), round(P.r[1], 6), round(P.r[2], 6), int(P.type))    
     for _ in range(subsystemCount):
         # get subsystem object
-        ss = ms.lineList[sub_idx]   
+        ss = ms.lineList[sub_idx]  
         types = []
         lengths = []
         points = []
@@ -1801,9 +1857,11 @@ def ss2lines(ms, nsegs=10):
         for i in range(0,len(ss.lineList)):
             types.append(ss.lineList[i].type)
             lengths.append(ss.lineList[i].L)
-            if not types[-1]['name'] in ms.lineTypes:
-                # add type to lineTypes list
-                ms.lineTypes[types[-1]['name']] = types[-1]
+            types[-1] = ms.setLineType(name=types[-1]['name'], 
+                                               lineType=types[-1],
+                                               overwrite=False)
+                               
+
         for i,spt in enumerate(ss.pointList):
             # gather all info about the points in the subsystem
             points.append({'r':spt.r,'m':spt.m,'v':spt.v,'CdA':spt.CdA,'d':spt.d,'type':spt.type,'Ca':spt.Ca})
@@ -1923,7 +1981,7 @@ def ss2lines(ms, nsegs=10):
                     curr_pt_idx,
                     [ms.pointList[curr_pt_idx - 1].r[0] - ms.bodyList[points[i]['body']].r6[0],
                     ms.pointList[curr_pt_idx - 1].r[1] - ms.bodyList[points[i]['body']].r6[1],
-                    ms.pointList[curr_pt_idx - 1].r[2]]
+                    ms.pointList[curr_pt_idx - 1].r[2] - ms.bodyList[points[i]['body']].r6[2]]
                 )
             if i > 0:
                 # this same point is end B for previous line
@@ -1963,20 +2021,35 @@ def duplicateSyntheticLines(ms):
                 if line.type['name'] == t:
                     inds.append(i)
             
-            names = [t]
+            names = []
             
-            # make copies of lineType (so that each segment with nonzero EAd has unique LineType)
-            for i in inds[1:]:
+            # iterate through list of indexes
+            for count, i in enumerate(inds):
                 
-                # insert the copies right below the existing linetype to make ordering more logical
+                #name for new linetypes
+                name = t +'_line'+ str(i+1)
                 
-                pos = list(ms.lineTypes.keys()).index(t) + 1
-                items = list(ms.lineTypes.items())     
-                items.insert(pos, (t+str(i), copy.deepcopy(ms.lineTypes[t])))
-                ms.lineTypes = dict(items)
-                ms.lineTypes[t + str(i)]['name'] = t + str(i)
+                #if first instance only update the name
+                if count == 0:
+                    ms.lineTypes[t]['name'] = name
+                    ms.lineTypes[name] = ms.lineTypes.pop(t)
                 
-                names.append(t + str(i))
+                #otherwise make a copy
+                else:
+                    # insert the copies right the previously added linetype to make ordering more logical
+                    pos = list(ms.lineTypes.keys()).index(names[0]) + 1 + count
+                    
+                    #save lineType list and insert copy
+                    items = list(ms.lineTypes.items())     
+                    items.insert(pos, (name, copy.deepcopy(ms.lineTypes[names[0]])))
+                    
+                    #update stored ms linetypes and name correctly
+                    ms.lineTypes = dict(items)
+                    ms.lineTypes[t +'_line'+ str(i+1)]['name'] = name
+                    
+                #keep track of name list and number of added linetypes 
+                names.append(name)
+                
             
             #make sure each line points to the correct lineType
             for j, i in enumerate(inds):

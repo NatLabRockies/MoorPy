@@ -26,7 +26,7 @@
 #    EA_dmax   :     # maximum valid diameter for the EA curve (values < 0 ignored)
 #    EA_MBL    :     # (quasi-static) stiffness per MBL [N/N] (aka Kr, Krs) 
 #    EAd_MBL   :     # dynamic stiffness per MBL [N/N] (aka Krd or Krd_alpha)
-#    EAd_MBL_Lm:     # dynamic stiffness per MBL per fraction of mean load (not %) [N/N] (aka or Krd_beta)
+#    EAD_LM:     # dynamic stiffness per MBL per fraction of mean load (not %) [N/N] (aka or Krd_beta)
 #
 #    dvol_dnom :     # volume-equivalent diameter per nominal diameter [-]
 #    density   :     # density of the line material [kg/m^3] (e.g., chain density = 7850 kg/m^3)
@@ -106,7 +106,7 @@ lineProps:
     MBL_d2    :  308e6     # minimum breaking load per diameter^2 [N/m^2]     
     EA_MBL    :  14        # quasi-static stiffness per MBL [N/N]
     EAd_MBL   :  11.6      # dynamic stiffness per MBL [N/N]
-    EAd_MBL_Lm : 40.0      # dynamic stiffness per MBL per fraction of mean load (not %) [N/N] (beta term to be multiplied with the absolute mean tension)
+    EAD_LM    : 40.0       # dynamic stiffness per fraction of mean load [N/N] (beta term to be multiplied with the absolute mean tension)
     density   :  1380      # density of the polyester material [kg/m^3] (taken from specific gravity of 1.38, relative to 1000 kg/m^3)
     cost_d    :  1.17e2    # cost per meter per diameter [2024$/m^2]
     cost_d2   :  1.27e4    # cost per meter per diameter^2 [2024$/m^3]
@@ -120,7 +120,7 @@ lineProps:
     MBL_d2    :  207e6     # minimum breaking load per diameter^2 [N/m^2] 
     EA_MBL    :  5         # quasi-static stiffness per MBL [N/N] (can range from 1 to 10)
     EAd_MBL   :  2.08      # dynamic stiffness per MBL [N/N]
-    EAd_MBL_Lm : 39.0      # dynamic stiffness per MBL per fraction of mean load (not %) [N/N] (beta term to be multiplied with the absolute mean tension)
+    EAD_LM    : 39.0       # dynamic stiffness per fraction of mean load [N/N] (beta term to be multiplied with the absolute mean tension)
     density   :  1140      # density of the nylon material [kg/m^3] (taken from specific gravity of 1.14, relative to 1000 kg/m^3)
     cost_d    :  9.84      # cost per meter per diameter [2024$/m^2]
     cost_d2   :  1.43e4    # cost per meter per diameter^2 [2024$/m^3]
@@ -134,7 +134,7 @@ lineProps:
     MBL_d2    :  580e6     # minimum breaking load per diameter^2 [N/m^2] 
     EA_MBL    :  56        # quasi-static stiffness per MBL [N/N]
     EAd_MBL   :  59        # dynamic stiffness per MBL [N/N]
-    EAd_MBL_Lm : 54.0      # dynamic stiffness per MBL per fraction of mean load (not %) [N/N] (beta term to be multiplied with the absolute mean tension)
+    EAD_LM : 54.0        # dynamic stiffness per fraction of mean load [N] (beta term to be multiplied with the absolute mean tension)
     density   :  975       # density of the hmpe/dyneema material [kg/m^3] (taken from specific gravity of 0.975, relative to 1000 kg/m^3
     Cd        :  1.988     # drag coefficient based on DNV-OS-E301 adjusted for use with volumetric diameter
     Ca        :  1.1       # added mass coefficient based on Bureau Veritas 493-NR_2021-07

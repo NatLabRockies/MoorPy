@@ -52,6 +52,7 @@ def nonlinear(XF, ZF, L, Str, Ten, W, nNodes=20, plots=0):
 
     
     # flip line in the solver if it is buoyant
+    # (note: currently staticsolve passes W=np.linalg.norm(w_total) , so W<0 will never execute)
     if W < 0:
         W = -W
         ZF = -ZF
@@ -122,7 +123,7 @@ def nonlinear(XF, ZF, L, Str, Ten, W, nNodes=20, plots=0):
     #Estimate Stiffness Numerically (Potentially find something better)
     #could also be hard to do because the input tension strain files are arbitrary
 
-    
+
 
     #Stiffness matrcies for the ends of the line (In this case since we already assume the element can only deform axially
     # this is essentially just a truss element with the nonlinear stiffness that we calculated
@@ -133,8 +134,8 @@ def nonlinear(XF, ZF, L, Str, Ten, W, nNodes=20, plots=0):
     Ka = np.array([[c2*(EA_est/str_L)+s2*ten_seg/(L*(1+str_seg)), cs*(EA_est/str_L)-cs*ten_seg/(L*(1+str_seg))],[ cs*(EA_est/str_L)-cs*ten_seg/(L*(1+str_seg)), s2*(EA_est/str_L)+c2*ten_seg/(L*(1+str_seg))]])    
     Kb = Ka
     Kab = -Ka 
-    
-   
+    Kba = Kab.T
+
     #Assign values to info
     #Fairlead forces
     info["HF"] = -FxB
@@ -145,6 +146,7 @@ def nonlinear(XF, ZF, L, Str, Ten, W, nNodes=20, plots=0):
     info["stiffnessA"] = Ka
     info["stiffnessB"] = Kb
     info["stiffnessAB"] = Kab
+    info["stiffnessBA"] = Kba
     #Length on the bottom is zero as we assumed earlier
     info["LBot"] = 0
     #self.info = info
@@ -153,12 +155,8 @@ def nonlinear(XF, ZF, L, Str, Ten, W, nNodes=20, plots=0):
     info["Z" ] = np.linspace(0,ZF,nNodes)
     info["s" ] = np.linspace(0,str_L,nNodes)
     info["Te"] = np.linspace(TA,TB,nNodes) 
-    
-    print(info["stiffnessA"])
-    print(info["stiffnessB"])
-    print(info["stiffnessAB"])
 
+    # Currently this will always be 0, since we force ZF to be positive, and nonlinear section has no bending
+    info["Zextreme"] = float(np.min(info["Z"]))
 
     return (FxA, FzA, FxB, FzB, info)     
-
- 
