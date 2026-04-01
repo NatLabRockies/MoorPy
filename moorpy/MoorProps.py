@@ -560,6 +560,8 @@ def getAnchorCost(fx = None, fz = None, type="drag-embedment", mass = None, area
     
     # >>> This function can be moved into Point <<<
 
+    if type=='drag-embedment': type = 'dea'
+
     # --- Load PointProps ---
     if not aprops:
         props = helpers.loadPointProps(None)
