@@ -48,10 +48,11 @@
 # Chain Notes
 # - The MBLs between studless and studlink chains are the same, for every grade
 # - The masses between different grades of chain are the same (for now...different grades might correspond to different material densities)
-# - If the user needs a different grade of chain, they will have to add another section and include those properties here. This default file only considers R4 chain
+# - If the user needs a different grade of chain, they will have to add another section and include those properties here. This file only considers R3 and R4 chain
 # - This default yaml uses R4 studless chain as the default style of chain
 # - The chain MBL uses a cubic function, so be aware if you are researching theoretical chains with diameters greater than about 360mm, as the MBL will then decrease
-# - Chain EA values not provided in manufacturer catalogs, so the below coefficients are taken from DNV-OS-E301 2013
+# - Chain EA values not provided in manufacturer catalogs, so the below coefficients are taken from DNV-OS-E301 2013 section 2.1.8
+# - R3 Chain MBL is derived from Anchor Marine Houston catalogue pages 52&53 (https://anchormarinehouston.com/wp-content/uploads/2023/08/Anchor-Marine-Catalog.pdf)
 
 # Note: costs combine all provided coefficients. If a coefficient is not provided it is assumed zero. All provided values will be used according to: 
 # cost per meter = 'cost_0' + 'cost_d' * d + 'cost_d2' * d**2 + 'cost_d3' * d**3 + 'cost_mass' * mass per meter + 'cost_EA' * EA + 'cost_MBL' * MBL
