@@ -101,7 +101,7 @@ RAO_fl = np.array([[ 2.0 ,  0.0 ,  0.0 ],
                    [ 2.0 ,  0.0 ,  0.0 ],
                    [ 2.0 ,  0.0 ,  0.0 ]])
 
-T_nodes_psd_fd,T_nodes_std_fd,s,r_static,r_dynamic,r_total,X = ms.lineList[1].dynamicSolve(
+T_nodes_amp_fd, T_nodes_psd_fd,T_nodes_std_fd,s,r_static,r_dynamic,r_total,X = ms.lineList[1].dynamicSolve(
                                 omegas,S_zeta,RAO_A=0,RAO_B=RAO_fl,depth=-ms.depth,
                                 kbot=kbot,cbot=cbot, seabed_tol=1e-4, tol=0.01, iters=100, w=0.8)
     
@@ -112,7 +112,7 @@ plt.xlabel('Node number (anchor to fairlead)')
 plt.ylabel('Fairlead tension std. dev [$N$]')
 
 # now try a Subsystem
-T_nodes_psd_fd,T_nodes_std_fd,s,r_static,r_dynamic,r_total,X = ms.lineList[2].dynamicSolve(
+T_nodes_amp_fd, T_nodes_psd_fd,T_nodes_std_fd,s,r_static,r_dynamic,r_total,X = ms.lineList[2].dynamicSolve(
                                 omegas,S_zeta,RAO_A=0,RAO_B=RAO_fl,depth=-ms.depth,
                                 kbot=kbot,cbot=cbot, seabed_tol=1e-4, tol=0.01, iters=100, w=0.8)
     

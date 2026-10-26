@@ -4051,19 +4051,24 @@ class System():
             
             X, Y = np.meshgrid(self.bathGrid_Xs, self.bathGrid_Ys)
             Z = -self.bathGrid
-            if rang=='hold':
-                rang = (np.min(Z), np.max(Z))
             
-            Xind = Xuvec.index(1); Yind = Yuvec.index(1); Zind = int(3-Xind-Yind)
-            W = [X,Y,Z]
-            
-            # plot a contour profile of the bathymetry
-            bath = ax.contourf(W[Xind],W[Yind],W[Zind], cmap=cmap_bath, levels=levels, alpha=alpha, vmin=rang[0], vmax=rang[1])
-            
-            if cbar_bath_aspect!=20 or cbar_bath_ticks!=None:    # make sure the colorbar is turned on just in case it isn't when the other colorbar inputs are used
-                cbar_bath=True
-            if cbar_bath:
-                fig.colorbar(bath, label='depth (m)', aspect=cbar_bath_aspect, ticks=cbar_bath_ticks)
+            # contourf requires at least a 2x2 grid
+            if Z.shape[0] < 2 or Z.shape[1] < 2:
+                print(f"Warning: Bathymetry grid shape {Z.shape} is too small for contour plotting (requires at least 2x2). Skipping seabed plot.")
+            else:
+                if rang=='hold':
+                    rang = (np.min(Z), np.max(Z))
+                
+                Xind = Xuvec.index(1); Yind = Yuvec.index(1); Zind = int(3-Xind-Yind)
+                W = [X,Y,Z]
+                
+                # plot a contour profile of the bathymetry
+                bath = ax.contourf(W[Xind],W[Yind],W[Zind], cmap=cmap_bath, levels=levels, alpha=alpha, vmin=rang[0], vmax=rang[1])
+                
+                if cbar_bath_aspect!=20 or cbar_bath_ticks!=None:    # make sure the colorbar is turned on just in case it isn't when the other colorbar inputs are used
+                    cbar_bath=True
+                if cbar_bath:
+                    fig.colorbar(bath, label='depth (m)', aspect=cbar_bath_aspect, ticks=cbar_bath_ticks)
             
         
         ax.axis("equal")
@@ -4097,7 +4102,7 @@ class System():
         
         fig, ax = self.plot()    # make the initial plot to then animate
         
-        nFreeDOF, nCpldDOF = self.getDOFs()
+        nFreeDOF, nCpldDOF, _ = self.getDOFs()
         if DOFtype=="free":
             nDOF = nFreeDOF
         elif DOFtype=="coupled":

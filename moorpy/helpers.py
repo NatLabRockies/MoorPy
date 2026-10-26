@@ -2627,6 +2627,7 @@ def get_dynamic_tension(line,omegas,S_zeta,RAO_A,RAO_B,depth,kbot,cbot,seabed_to
 
 def get_modes(line,fix_A=True,fix_B=True,plot_modes=False,amp_factor=1,adj_view = False,kbot=3E+06,cbot=3E+05,seabed_tol=1E-04):
     import matplotlib.pyplot as plt
+    import scipy.linalg as la
     from collections.abc import Iterable
 
     M,A,_,K,r_nodes,_ = line.getDynamicMatrices(np.ones(1), np.ones(1),0.,line.sys.depth,kbot,cbot,seabed_tol=seabed_tol)
